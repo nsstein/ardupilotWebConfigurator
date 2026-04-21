@@ -1,4 +1,4 @@
-A single html/js/css file that can either simply be openned with Chrome or hosted on a website.  It is focused on ardupilot configuration in a clean multi-platform world.   Wizards and parameter groupings will continue to evolve.
+A single HTML/JavaScript/CSS file that can be opened directly in Chrome or hosted on a website. The solution is designed to support ArduPilot configuration in a clean, multi-platform environment. Wizards and parameter groupings will continue to evolve to improve usability and streamline configuration workflows.
 
 <img width="1147" height="594" alt="Screenshot 2026-04-21 at 2 49 17 PM" src="https://github.com/user-attachments/assets/49736163-06b0-4323-b0ef-50dc21efaf18" />
 <br><br>
