@@ -502,6 +502,9 @@
   .diff-old { color: var(--red); text-decoration: line-through; min-width: 60px; text-align: right; }
   .diff-arrow { color: var(--text3); }
   .diff-new { color: var(--green); min-width: 60px; text-align: right; }
+  .diff-actions { margin-left: auto; display:flex; align-items:center; }
+  .diff-row .icon-btn { color: var(--text2); }
+  .diff-row .icon-btn:hover { color: var(--red); background: var(--red-dim); }
   .diff-footer {
     padding: 12px 16px;
     border-top: 1px solid var(--border);
@@ -1266,7 +1269,7 @@
 <div class="topbar" id="topbar">
   <div class="logo">
     <a href="javascript:safeReload();"><div class="logo-icon">✈</div></a>
-    ArduPilot Configurator v0.1.47.4
+    ArduPilot Configurator v0.1.47.13
   </div>
   <div class="topbar-spacer"></div>
   <div id="statusPill" class="status-pill empty">
@@ -4588,6 +4591,7 @@ async function startConnect() {
       initUI();
       setConnectionUI(true);
       setUiLocked(false);
+      try { mavStartTelemetry(); } catch(_) {}
       window.__mpLink.lastParamDoneTs = Date.now();
       setMavProgress(100, `Done — ${res.received} params`);
       closeConnectModal();
@@ -4909,7 +4913,8 @@ airframeCopterMotors: 4, // 4 | 6 | 8
 
 const AGENTS = [
   { id: 'vtol', icon: '🧠', title: 'VTOL Setup Wizard', subtitle: 'Step-by-step VTOL' },
- { id: 'airframe', icon: '🧩', title: 'Airframe Mapping Wizard', subtitle: 'Plane/Copter output mapping' },
+  { id: 'airframe', icon: '🧩', title: 'Airframe Mapping Wizard', subtitle: 'Plane/Copter output mapping' },
+  { id: 'levelhorizon', icon: '🟦', title: 'Level Horizon Wizard', subtitle: 'Calibrate FC level attitude' },
   { id: 'accelcal', icon: '🧭', title: 'Accelerometer Calibration', subtitle: '6‑orientation accel calibration' }
 ];
 
@@ -4993,6 +4998,7 @@ function vtolSteps(type){
 }
 
 function renderAgents(area){
+  if (agentState.selected !== 'levelhorizon') { try { stopLevelHorizonMonitor(); } catch(_) {} }
   const hasParams = agentHasParams();
   const cat = CATEGORIES.find(c => c.id === 'agents');
 
@@ -5039,6 +5045,10 @@ function renderAgents(area){
     renderAirframeWizard(area);
     return;
   }
+  if (agentState.selected === 'levelhorizon') {
+    renderLevelHorizonWizard(area);
+    return;
+  }
 
   if (agentState.selected === 'accelcal') {
     renderAccelCalWizard(area);
@@ -5046,8 +5056,8 @@ function renderAgents(area){
   }
 }
 
-function openAgent(id){ agentState.selected = id; if (id==='vtol') agentState.stepIndex = 0; if (id==='accelcal') agentState.accel = { active:false, completed:false, stepIndex:0, done:{}, lastSendTs:0 }; renderAgents(document.getElementById('contentArea')); }
-function closeAgent(){ agentState.selected = null; renderAgents(document.getElementById('contentArea')); }
+function openAgent(id){ try { stopLevelHorizonMonitor(); } catch(_) {} agentState.selected = id; if (id==='vtol') agentState.stepIndex = 0; if (id==='levelhorizon') agentState.levelHorizon = { stepIndex: 0, completed: false, lastAck: null, toleranceDeg: 5.0, monitorTimer: null }; if (id==='accelcal') agentState.accel = { active:false, completed:false, stepIndex:0, done:{}, lastSendTs:0 }; renderAgents(document.getElementById('contentArea')); }
+function closeAgent(){ try { stopLevelHorizonMonitor(); } catch(_) {} agentState.selected = null; renderAgents(document.getElementById('contentArea')); }
 
 
 
@@ -6003,6 +6013,357 @@ function agtCheckQParams(){
 }
 
 
+
+// ============================================================
+// LEVEL HORIZON WIZARD (Mission Planner / QGroundControl style)
+// ============================================================
+const LEVEL_HORIZON_STEPS = [
+  { id:'prep', title:'Step 1 — Level the aircraft', desc:'Place the aircraft on a known level surface in its normal flight attitude. Use shims if needed so the fuselage is truly level.' },
+  { id:'capture', title:'Step 2 — Validate live attitude and capture level', desc:'Confirm live roll/pitch are both near zero before storing the current attitude as the flight controller’s level horizon.' },
+  { id:'finish', title:'Step 3 — Review / complete', desc:'The FC should now treat the current attitude as level. You can optionally refresh trim values or reboot if your workflow requires it.' },
+];
+
+function levelHorizonEnsureState(){
+  if (!agentState.levelHorizon) {
+    agentState.levelHorizon = { stepIndex: 0, completed: false, lastAck: null, toleranceDeg: 5.0, monitorTimer: null };
+  }
+  if (!Number.isFinite(Number(agentState.levelHorizon.toleranceDeg))) agentState.levelHorizon.toleranceDeg = 5.0;
+}
+
+function levelHorizonStep(i){
+  levelHorizonEnsureState();
+  agentState.levelHorizon.stepIndex = Math.max(0, Math.min(LEVEL_HORIZON_STEPS.length - 1, Number(i) || 0));
+  renderAgents(document.getElementById('contentArea'));
+}
+
+function levelHorizonLiveSnapshot(){
+  levelHorizonEnsureState();
+  const t = window.__telemetry || {};
+  const connected = !!(mav && transport && transport.isOpen);
+  const age = t.lastTs ? (Date.now() - t.lastTs) : Infinity;
+  const live = connected && age < 3000;
+  const tol = Math.max(0.1, Number(agentState.levelHorizon.toleranceDeg) || 5.0);
+  const roll = Number(t.rollDeg || 0);
+  const pitch = Number(t.pitchDeg || 0);
+  const yaw = Number(t.yawDeg || 0);
+  const withinTol = live && Math.abs(roll) <= tol && Math.abs(pitch) <= tol;
+  return { connected, live, age, tol, roll, pitch, yaw, withinTol };
+}
+
+function stopLevelHorizonMonitor(){
+  try {
+    if (agentState && agentState.levelHorizon && agentState.levelHorizon.monitorTimer) {
+      clearInterval(agentState.levelHorizon.monitorTimer);
+      agentState.levelHorizon.monitorTimer = null;
+    }
+  } catch(_) {}
+}
+
+function startLevelHorizonMonitor(){
+  levelHorizonEnsureState();
+  stopLevelHorizonMonitor();
+  try { if (agentIsConnected()) mavStartTelemetry(); } catch(_) {}
+  try { updateLevelHorizonLiveUi(); } catch(_) {}
+  agentState.levelHorizon.monitorTimer = setInterval(() => {
+    try { updateLevelHorizonLiveUi(); } catch(_) {}
+  }, 350);
+}
+
+function updateLevelHorizonLiveUi(){
+  if (!agentState || agentState.selected !== 'levelhorizon') return;
+  const s = levelHorizonLiveSnapshot();
+  const rollEl = document.getElementById('lhRollVal');
+  const pitchEl = document.getElementById('lhPitchVal');
+  const yawEl = document.getElementById('lhYawVal');
+  const pillEl = document.getElementById('lhLivePill');
+  const statEl = document.getElementById('lhValidationText');
+  const capBtn = document.getElementById('lhCaptureBtn');
+
+  if (rollEl) rollEl.textContent = s.live ? s.roll.toFixed(1) + '°' : '—';
+  if (pitchEl) pitchEl.textContent = s.live ? s.pitch.toFixed(1) + '°' : '—';
+  if (yawEl) yawEl.textContent = s.live ? s.yaw.toFixed(0) + '°' : '—';
+
+  if (pillEl) {
+    if (!s.connected) {
+      pillEl.textContent = 'OFFLINE';
+      pillEl.style.color = 'var(--text2)';
+      pillEl.style.background = 'var(--bg3)';
+      pillEl.style.borderColor = 'var(--border)';
+    } else if (!s.live) {
+      pillEl.textContent = 'WAITING FOR LIVE ATTITUDE';
+      pillEl.style.color = 'var(--amber)';
+      pillEl.style.background = 'rgba(251,191,36,0.10)';
+      pillEl.style.borderColor = 'rgba(251,191,36,0.35)';
+    } else if (s.withinTol) {
+      pillEl.textContent = 'READY';
+      pillEl.style.color = 'var(--green)';
+      pillEl.style.background = 'rgba(52,211,153,0.10)';
+      pillEl.style.borderColor = 'rgba(52,211,153,0.35)';
+    } else {
+      pillEl.textContent = 'OUT OF TOLERANCE';
+      pillEl.style.color = 'var(--red)';
+      pillEl.style.background = 'rgba(248,113,113,0.10)';
+      pillEl.style.borderColor = 'rgba(248,113,113,0.35)';
+    }
+  }
+
+  if (statEl) {
+    if (!s.connected) {
+      statEl.textContent = 'Connect to the FC to validate live roll/pitch before capture.';
+      statEl.style.color = 'var(--text3)';
+    } else if (!s.live) {
+      statEl.textContent = 'Waiting for live ATTITUDE telemetry… keep the FC connected and still.';
+      statEl.style.color = 'var(--amber)';
+    } else if (s.withinTol) {
+      statEl.textContent = `Live roll/pitch are within ±${s.tol.toFixed(1)}°. Capture is enabled.`;
+      statEl.style.color = 'var(--green)';
+    } else {
+      statEl.textContent = `Adjust the airframe until both roll and pitch are within ±${s.tol.toFixed(1)}°.`;
+      statEl.style.color = 'var(--red)';
+    }
+  }
+
+  if (capBtn) {
+    capBtn.disabled = !(s.connected && s.live && s.withinTol);
+    capBtn.title = s.withinTol ? 'Capture current attitude as level' : 'Capture requires live roll/pitch within tolerance';
+  }
+}
+
+async function refreshLevelTrimParams(){
+  if (!agentIsConnected()) {
+    showToast('⚠ Connect to FC first', false);
+    return;
+  }
+
+  try {
+    const names = ['AHRS_TRIM_X', 'AHRS_TRIM_Y', 'AHRS_TRIM_Z'];
+    for (const n of names) {
+      const waiter = paramClient.waitForParam(n, 1200);
+      try { await paramClient.requestReadByName(n); } catch(_) {}
+      const got = await waiter;
+      if (got && got.valueStr !== undefined) {
+        currentParams[n] = String(got.valueStr);
+        originalParams[n] = String(got.valueStr);
+      }
+      await sleep(80);
+    }
+    showToast('✓ Refreshed AHRS trim values', true);
+    renderAgents(document.getElementById('contentArea'));
+  } catch(e) {
+    showToast('⚠ Unable to refresh trim values', false);
+  }
+}
+
+async function runLevelHorizonCalibration(){
+  if (!agentIsConnected()) {
+    showToast('⚠ Connect to FC first', false);
+    return;
+  }
+
+  levelHorizonEnsureState();
+  const live = levelHorizonLiveSnapshot();
+  if (!(live.connected && live.live && live.withinTol)) {
+    showToast(`⚠ Live roll/pitch must both be within ±${live.tol.toFixed(1)}° before capture`, false);
+    try { updateLevelHorizonLiveUi(); } catch(_) {}
+    return;
+  }
+
+  try {
+    showToast('⏳ Sending level horizon calibration…', true);
+
+    const ts = (paramClient && paramClient.targetSysId) ? paramClient.targetSysId : 1;
+    const tc = (paramClient && paramClient.targetCompId) ? paramClient.targetCompId : 1;
+
+    // MAV_CMD_PREFLIGHT_CALIBRATION (241)
+    // param5=2 is commonly used by ArduPilot GCS flows for "calibrate level" / board-level trim.
+    await mavSendCommandLong(241, [0,0,0,0,2,0,0], ts, tc, 0);
+
+    const ack = await waitForCommandAck(241, 2200);
+    agentState.levelHorizon.lastAck = ack || null;
+
+    const ok = !!(ack && (ack.resultName === 'ACCEPTED' || ack.resultName === 'IN_PROGRESS'));
+
+    if (ok) {
+      agentState.levelHorizon.completed = true;
+      agentState.levelHorizon.stepIndex = 2;
+      try { await refreshLevelTrimParams(); } catch(_) {}
+      showToast('✓ Level horizon calibration accepted', true);
+    } else {
+      showToast('⚠ Level horizon calibration not confirmed', false);
+    }
+  } catch(e) {
+    showToast('⚠ ' + (e && e.message ? e.message : String(e)), false);
+  }
+
+  renderAgents(document.getElementById('contentArea'));
+}
+
+function levelTrimReadout(){
+  const x = currentParams['AHRS_TRIM_X'] ?? '—';
+  const y = currentParams['AHRS_TRIM_Y'] ?? '—';
+  const z = currentParams['AHRS_TRIM_Z'] ?? '—';
+
+  return `
+    <div class="ah-kv" style="margin-top:12px;">
+      <div class="kv"><div class="k">AHRS_TRIM_X</div><div class="v">${escHtml(String(x))}</div></div>
+      <div class="kv"><div class="k">AHRS_TRIM_Y</div><div class="v">${escHtml(String(y))}</div></div>
+      <div class="kv"><div class="k">AHRS_TRIM_Z</div><div class="v">${escHtml(String(z))}</div></div>
+    </div>`;
+}
+
+function renderLevelHorizonWizard(area){
+  levelHorizonEnsureState();
+  const connected = agentIsConnected();
+  const s = agentState.levelHorizon;
+  const idx = Math.max(0, Math.min(LEVEL_HORIZON_STEPS.length - 1, s.stepIndex || 0));
+  const step = LEVEL_HORIZON_STEPS[idx];
+  const ackText = s.lastAck ? ('Last ACK: ' + s.lastAck.resultName) : 'Awaiting calibration';
+  const snap = levelHorizonLiveSnapshot();
+  const tol = snap.tol;
+
+  area.innerHTML = `
+    <div class="content-header">
+      <div>
+        <h1>🤖 Configuration Agents · 🟦 Level Horizon Wizard</h1>
+        <p>Mission Planner / QGroundControl style board-level trim calibration with live roll/pitch validation</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn" onclick="closeAgent()">← Back</button>
+      </div>
+    </div>
+
+    <div class="agent-wizard">
+      <div class="agent-steps">
+        <div class="hdr">
+          <div class="t">Steps</div>
+          <div style="margin-left:auto;color:var(--text3);font-family:var(--font);font-size:11px;">${idx+1}/${LEVEL_HORIZON_STEPS.length}</div>
+        </div>
+
+        <div class="list">
+          ${LEVEL_HORIZON_STEPS.map((st, i) => `
+            <div class="agent-step ${i===idx ? 'active' : ''}" onclick="levelHorizonStep(${i})">
+              <div class="n">${i+1}</div>
+              <div class="body">
+                <div class="st">${st.title}</div>
+                <div class="sd">${st.desc}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="agent-main">
+        <div class="top">
+          <div class="title">${step.title}</div>
+          <div class="sub">${connected ? 'FC connected' : 'Not connected'} · ${s.completed ? 'Completed' : ackText}</div>
+        </div>
+
+        <div class="body">
+          <div class="agent-box">
+            <div style="font-weight:900;color:var(--text);margin-bottom:6px;">Instructions</div>
+            ${step.desc}
+            <div class="agent-note" style="margin-top:10px;">
+              This wizard captures the current physical attitude as the level horizon reference.
+              Use it for correcting small mounting offsets after accelerometer calibration.
+            </div>
+          </div>
+
+          <div class="diagram-wrap" style="margin-top:12px;">
+            <div class="ah-wrap">
+              <div class="ah-instrument" style="width:180px;height:180px;">
+                <div class="ah-rot" id="lhRot" style="transform:rotate(0deg)">
+                  <div class="ah-pitch" id="lhPitch" style="transform:translateY(0px)">
+                    <div class="ah-sky"></div>
+                    <div class="ah-ground"></div>
+                    <div class="ah-hline"></div>
+                  </div>
+                </div>
+                <div class="ah-bezel"></div>
+                <div class="ah-reticle">
+                  <div class="ah-wing"></div>
+                  <div class="ah-center"></div>
+                  <div class="ah-nose"></div>
+                </div>
+                <div class="ah-glass"></div>
+              </div>
+
+              <div class="ah-readout">
+                <div class="hdr">
+                  <div class="ttl">Live validation</div>
+                  <div class="ah-pill" id="lhLivePill" style="border-color:var(--border);">${snap.connected ? (snap.live ? (snap.withinTol ? 'READY' : 'OUT OF TOLERANCE') : 'WAITING FOR LIVE ATTITUDE') : 'OFFLINE'}</div>
+                </div>
+                <div class="agent-note" style="margin-top:8px;">
+                  Capture is only enabled when live roll and pitch are each within ±${tol.toFixed(1)}°.
+                </div>
+                <div class="ah-kv" style="margin-top:12px;">
+                  <div class="kv"><div class="k">ROLL</div><div class="v" id="lhRollVal">—</div></div>
+                  <div class="kv"><div class="k">PITCH</div><div class="v" id="lhPitchVal">—</div></div>
+                  <div class="kv"><div class="k">YAW</div><div class="v" id="lhYawVal">—</div></div>
+                  <div class="kv"><div class="k">TOLERANCE</div><div class="v">±${tol.toFixed(1)}°</div></div>
+                </div>
+                <div id="lhValidationText" class="agent-note" style="margin-top:10px;"></div>
+                ${levelTrimReadout()}
+              </div>
+            </div>
+          </div>
+
+          <div class="agent-actions" style="margin-top:12px;">
+            <button class="btn"
+                    onclick="levelHorizonStep(Math.max(0, (agentState.levelHorizon?.stepIndex||0)-1))"
+                    ${idx===0 ? 'disabled' : ''}>← Prev</button>
+
+            <button class="btn"
+                    onclick="levelHorizonStep(Math.min(LEVEL_HORIZON_STEPS.length-1, (agentState.levelHorizon?.stepIndex||0)+1))"
+                    ${idx===LEVEL_HORIZON_STEPS.length-1 ? 'disabled' : ''}>Next →</button>
+
+            <span style="flex:1"></span>
+
+            <button class="btn primary"
+                    id="lhCaptureBtn"
+                    ${connected ? '' : 'disabled'}
+                    onclick="runLevelHorizonCalibration()">Capture Level Horizon</button>
+
+            <button class="btn"
+                    ${connected ? '' : 'disabled'}
+                    onclick="refreshLevelTrimParams()">Refresh Trims</button>
+
+            <button class="btn"
+                    ${connected && s.completed ? '' : 'disabled'}
+                    onclick="rebootFcAndReloadParams()">Optional Reboot</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // Drive live telemetry UI immediately and on a short interval.
+  try { startLevelHorizonMonitor(); } catch(_) {}
+  try {
+    const live = levelHorizonLiveSnapshot();
+    const rot = document.getElementById('lhRot');
+    const pit = document.getElementById('lhPitch');
+    if (rot) rot.style.transform = `rotate(${-live.roll}deg)`;
+    if (pit) pit.style.transform = `translateY(${Math.max(-60, Math.min(60, live.pitch * 2.0))}px)`;
+  } catch(_) {}
+}
+
+// Keep the level-horizon mini instrument animated with the incoming ATTITUDE stream.
+(function(){
+  const prevHandleAttitudeFrame = handleAttitudeFrame;
+  handleAttitudeFrame = function(frame){
+    try { prevHandleAttitudeFrame(frame); } catch(_) {}
+    try {
+      if (agentState && agentState.selected === 'levelhorizon') {
+        const snap = levelHorizonLiveSnapshot();
+        const rot = document.getElementById('lhRot');
+        const pit = document.getElementById('lhPitch');
+        if (rot) rot.style.transform = `rotate(${-snap.roll}deg)`;
+        if (pit) pit.style.transform = `translateY(${Math.max(-60, Math.min(60, snap.pitch * 2.0))}px)`;
+        updateLevelHorizonLiveUi();
+      }
+    } catch(_) {}
+  };
+})();
+
 // ============================================================
 // ACCELEROMETER CALIBRATION WIZARD
 // ============================================================
@@ -6493,7 +6854,7 @@ function renderOverview(area) {
         <div class="kv"><div class="k">Pitch</div><div class="v"><span id="ahPitchVal">0.0</span><small>deg</small></div></div>
         <div class="kv" style="grid-column: 1 / span 2;"><div class="k">Yaw</div><div class="v"><span id="ahYawVal">0</span><small>deg</small></div></div>
       </div>
-      <div style="margin-top:10px;color:var(--text3);font-size:12px;line-height:1.6;">Connect to an FC to see live roll/pitch/yaw.</div>
+      <div style="margin-top:10px;color:var(--text3);font-size:12px;line-height:1.6;">Connect to FC to see live roll/pitch/yaw.</div>
     </div>
   </div>
 
@@ -6535,6 +6896,61 @@ function buildKeyValueRows(rows) {
 // ============================================================
 // PARAM CHANGES
 // ============================================================
+function osdCaptureUiState() {
+  return {
+    active: activeCat === 'osd',
+    screen: osdState && osdState.screen ? osdState.screen : null,
+    gridLeft: (() => { const el = document.getElementById('osdGridScroll'); return el ? el.scrollLeft : 0; })(),
+    gridTop: (() => { const el = document.getElementById('osdGridScroll'); return el ? el.scrollTop : 0; })(),
+    advTop: (() => { const el = document.querySelector('.osd-adv-scroll'); return el ? el.scrollTop : 0; })(),
+    advOpen: (() => { const el = document.querySelector('.osd-advanced details'); return el ? !!el.open : false; })(),
+    filter: (typeof osdAdvState !== 'undefined' && osdAdvState) ? (osdAdvState.filter || '') : '',
+    changedOnly: !!((typeof osdAdvState !== 'undefined' && osdAdvState) ? osdAdvState.changedOnly : false)
+  };
+}
+
+function osdRestoreUiState(state) {
+  if (!state || activeCat !== 'osd') return;
+  if (state.screen && osdState) osdState.screen = state.screen;
+  const details = document.querySelector('.osd-advanced details');
+  if (details) details.open = !!state.advOpen;
+  const grid = document.getElementById('osdGridScroll');
+  if (grid) { grid.scrollLeft = state.gridLeft || 0; grid.scrollTop = state.gridTop || 0; }
+  const adv = document.querySelector('.osd-adv-scroll');
+  if (adv) adv.scrollTop = state.advTop || 0;
+  const f = document.getElementById('osdAdvFilter');
+  if (f) f.value = state.filter || '';
+  const c = document.getElementById('osdAdvChanged');
+  if (c) c.checked = !!state.changedOnly;
+}
+
+function osdKeyAffectsVisuals(key) {
+  const k = String(key || '');
+  if (!k.startsWith('OSD')) return false;
+  return /_(EN|X|Y)$/.test(k) || /_TXT_RES$/.test(k) || /_TYPE$/.test(k) || k === 'OSD_TYPE';
+}
+
+function osdRefreshVisualsForKey(key, uiState) {
+  if (activeCat !== 'osd') return;
+  if (!osdKeyAffectsVisuals(key)) return;
+  const area = document.getElementById('contentArea');
+  if (!area) return;
+  renderOSDEditor(area);
+  osdRestoreUiState(uiState);
+
+  const keyStr = String(key || '');
+  const screen = osdState && osdState.screen ? osdState.screen : '';
+  const m = keyStr.match(/^OSD\d+_(.+)_(EN|X|Y)$/);
+  if (m && keyStr.startsWith(screen + '_')) {
+    const tok = document.getElementById('osdTok_' + m[1]);
+    if (tok) {
+      tok.classList.remove('pulse');
+      void tok.offsetWidth;
+      tok.classList.add('pulse');
+    }
+  }
+}
+
 function onParamChange(el) {
  const key = el.dataset.key;
  if (!key) return;
@@ -6558,17 +6974,21 @@ function validateInput(el) {
 }
 
 function revertParam(key) {
+ const osdUiState = osdCaptureUiState();
  setParam(key, originalParams[key], { silent: true });
+ osdRefreshVisualsForKey(key, osdUiState);
 }
 
 
 function revertAll() {
  if (window.__uiLocked) { showToast('⚠ UI locked while writing to FC', false); return; }
+ const osdUiState = osdCaptureUiState();
  currentParams = JSON.parse(JSON.stringify(originalParams));
  renderContent();
  updateDiffCount();
  updateSaveButtons();
  renderDiff();
+ osdRefreshVisualsForKey('OSD_TYPE', osdUiState);
  showToast('↩ All changes reverted', false);
 }
 
@@ -6609,10 +7029,13 @@ function renderDiff() {
   }
   body.innerHTML = changes.map(k => `
     <div class="diff-row">
-      <div class="diff-key">${k}</div>
-      <div class="diff-old">${originalParams[k]}</div>
+      <div class="diff-key">${escHtml(k)}</div>
+      <div class="diff-old">${escHtml(String(originalParams[k] ?? ''))}</div>
       <div class="diff-arrow">→</div>
-      <div class="diff-new">${currentParams[k]}</div>
+      <div class="diff-new">${escHtml(String(currentParams[k] ?? ''))}</div>
+      <div class="diff-actions">
+        <button class="icon-btn" title="Revert this change" onclick="revertParam('${k.replace(/'/g, "\'")}')">↩</button>
+      </div>
     </div>
   `).join('');
 }
@@ -7199,3 +7622,4 @@ document.addEventListener('keydown', e => {
 </script>
 </body>
 </html>
+
