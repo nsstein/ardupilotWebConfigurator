@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ArduPilot Web Configurator v0.1.48.0</title>
+<title>ArduPilot Web Configurator v0.1.50.0</title>
 <style>
   :root {
     --bg: #0d0f14;
@@ -1328,7 +1328,7 @@
 <div class="topbar" id="topbar">
   <div class="logo">
     <a href="javascript:safeReload();"><div class="logo-icon">✈</div></a>
-    ArduPilot Web Configurator v0.1.48.0
+    ArduPilot Web Configurator v0.1.50.0
   </div>
   <div class="topbar-spacer"></div>
   <div id="statusPill" class="status-pill empty">
@@ -6350,10 +6350,9 @@ function rcCalStatusHtml(){
     const hint = linkHealthy ? 'MAVLink traffic is active, but the FC is not currently delivering fresh RC channel frames into the wizard state.' : 'No recent MAVLink traffic detected from the FC yet.';
     return `<div><span class="rcwiz-stage capture">WAITING FOR LIVE RC</span><div style="margin-top:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.03);font-size:11px;color:var(--text2);line-height:1.55;"><div><strong style="color:var(--text);">Link state:</strong> ${linkHealthy ? 'MAVLink active' : 'No recent MAVLink traffic'}</div><div><strong style="color:var(--text);">Last RC frame:</strong> ${frameAge}</div><div><strong style="color:var(--text);">Last RC stream request:</strong> ${reqAge}</div><div><strong style="color:var(--text);">Requests sent:</strong> ${Number(live.requestCount || 0)} @ ${Number(live.lastStreamRateHz || 10)}Hz</div><div><strong style="color:var(--text);">Recovery mode:</strong> ${live.lastRecoveryReason || 'idle'}</div><div style="margin-top:6px;color:${linkHealthy ? 'var(--amber)' : 'var(--red)'};">${hint}</div></div><div class="rcwiz-actions" style="margin-top:8px;"><button class="btn" onclick="rcCalManualResendRequest()">Re-send RC Stream Request</button></div></div>`;
   }
-  if (s.captureTrim) return '<span class="rcwiz-stage capture">CAPTURING TRIMS</span>';
-  if (s.captureExtremes) return '<span class="rcwiz-stage capture">CAPTURING EXTREMES</span>';
-  if (Object.keys(s.trims||{}).length) return '<span class="rcwiz-stage done">READY TO APPLY</span>';
-  return '<span class="rcwiz-stage active">LIVE RC DETECTED</span>';
+  if (s.captureExtremes) return '<span class="rcwiz-stage capture">● CALIBRATION ACTIVE — Move sticks through full travel, then click Stop Calibration</span>';
+  if (Object.keys(s.trims||{}).length || Object.keys(s.mins||{}).length) return '<span class="rcwiz-stage done">✓ VALUES SAVED — Review and apply below, or Start again to recalibrate</span>';
+  return '<span class="rcwiz-stage active">LIVE RC DETECTED — Click Start Calibration to begin</span>';
 }
 async function rcCalStart(){
   const s = rcCalEnsureState();
@@ -6367,6 +6366,24 @@ async function rcCalStart(){
     await mavSendCommandLong(241, [0,0,0,1,0,0,0], ts, tc, 0);
   } catch(e) {}
   showToast('✓ RC capture started — move all sticks, switches, and knobs through their full travel', true);
+  renderAgents(document.getElementById('contentArea'));
+}
+function rcCalStop(){
+  const s = rcCalEnsureState();
+  if (!s.captureExtremes) return; // nothing to stop
+  s.captureExtremes = false;
+  s.captureTrim = false;
+  // Snapshot current live channel values as mid (trim) at the moment the user clicks Stop.
+  // Instruction: center sticks before clicking Stop so these become the neutral/trim values.
+  if (rcCalIsLive()) {
+    const chans = (window.__rcCalLive && window.__rcCalLive.channels) || {};
+    for (const [k, v] of Object.entries(chans)) {
+      const n = Number(v);
+      if (Number.isFinite(n)) s.trims[String(k)] = n;
+    }
+  }
+  s.stepIndex = 2;
+  showToast('✓ Calibration stopped — mid (trim) values captured from current stick positions. Review values below.', true);
   renderAgents(document.getElementById('contentArea'));
 }
 function rcCalStopExtremes(){ const s = rcCalEnsureState(); s.captureExtremes = false; s.stepIndex = 2; showToast('✓ Extremes captured — center the sticks for trim capture', true); renderAgents(document.getElementById('contentArea')); }
@@ -6418,6 +6435,12 @@ function rcCalApplyToParams(){
     }
   }
   showToast(changed ? '✓ Applied captured RC values (pending write)' : 'ℹ No captured RC values to apply', !!changed);
+  if (changed) {
+    // Clear captured values — they have been staged for write. Start a new calibration to recapture.
+    s.mins = {}; s.maxs = {}; s.trims = {};
+    const review = document.getElementById('rcwizReviewBody');
+    if (review) review.innerHTML = rcCalRowsForReview();
+  }
 }
 function updateRcCalUi(){
   if (!agentState || agentState.selected !== 'rccal') return;
@@ -6442,6 +6465,18 @@ function updateRcCalUi(){
   }
   const review = document.getElementById('rcwizReviewBody');
   if (review) review.innerHTML = rcCalRowsForReview();
+  // Sync the Start / Stop toggle button without a full re-render
+  const calBtn = document.getElementById('rcwizCalToggleBtn');
+  if (calBtn) {
+    const s = rcCalEnsureState();
+    const capturing = !!s.captureExtremes;
+    const isConnected = agentIsConnected();
+    calBtn.textContent = capturing ? '⏹ Stop Calibration' : '▶ Start Calibration';
+    calBtn.onclick = capturing ? rcCalStop : rcCalStart;
+    calBtn.disabled = !isConnected;
+    calBtn.style.background = capturing ? 'var(--red)' : '';
+    calBtn.style.borderColor = capturing ? 'var(--red)' : '';
+  }
 }
 function renderRcCalWizard(area){
   const connected = agentIsConnected();
@@ -6487,10 +6522,21 @@ function renderRcCalWizard(area){
                 </div>
                 <div id="rcwizBars" class="rcwiz-bars">${Array.from({length:16}, (_,i)=>rcBarRow(i+1)).join('')}</div>
                 <div class="rcwiz-actions">
-                  <button class="btn primary" ${connected ? '' : 'disabled'} onclick="rcCalStart()">Start Calibration</button>
-                  <button class="btn" ${connected ? '' : 'disabled'} onclick="rcCalStopExtremes()">Done Capturing Extremes</button>
-                  <button class="btn" ${connected ? '' : 'disabled'} onclick="rcCalCaptureTrim()">Capture Trim</button>
+                  <button class="btn primary" id="rcwizCalToggleBtn"
+                    style="${st.captureExtremes ? 'background:var(--red);border-color:var(--red);' : ''}"
+                    ${connected ? '' : 'disabled'}
+                    onclick="${st.captureExtremes ? 'rcCalStop()' : 'rcCalStart()'}">
+                    ${st.captureExtremes ? '⏹ Stop Calibration' : '▶ Start Calibration'}
+                  </button>
                   <button class="btn" onclick="updateRcCalUi()">Refresh</button>
+                </div>
+                <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5;">
+                  ${st.captureExtremes
+                    ? '🟡 Move all sticks, switches and knobs through their <strong>full travel</strong>. Center sticks, then click <strong>Stop Calibration</strong> — mid values are captured at stop.'
+                    : (Object.keys(st.trims||{}).length || Object.keys(st.mins||{}).length)
+                      ? '✅ Saved values are shown below. Click <strong>Start Calibration</strong> to recapture, or <strong>Apply to Parameters</strong> to stage them for writing.'
+                      : 'Click <strong>Start Calibration</strong> to begin capturing low / mid / high values for each channel.'
+                  }
                 </div>
               </div>
               <div class="rcwiz-panel">
@@ -8801,6 +8847,14 @@ document.addEventListener('keydown', e => {
 
 </body>
 </html>
+
+
+
+
+
+
+
+
 
 
 
