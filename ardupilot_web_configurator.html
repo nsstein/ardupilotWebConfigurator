@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ArduPilot Configurator</title>
+<title>ArduPilot Web Configurator v0.1.48.0</title>
 <style>
   :root {
     --bg: #0d0f14;
@@ -695,6 +695,19 @@
     background: rgba(251,191,36,0.22);
   }
 
+  .btn.reboot,
+  #rebootFcBtn {
+    background: var(--red-dim) !important;
+    border-color: rgba(248,113,113,0.40) !important;
+    color: var(--red) !important;
+  }
+  .btn.reboot:hover,
+  #rebootFcBtn:hover {
+    background: rgba(248,113,113,0.22) !important;
+    border-color: rgba(248,113,113,0.45) !important;
+    color: var(--red) !important;
+  }
+
   .write-progress-wrap {
     position: fixed; bottom: 60px; left: 50%;
     transform: translateX(-50%);
@@ -1224,6 +1237,7 @@
 .btn:hover{ background: transparent; border-color: var(--border2); }
 .btn.primary:hover{ background: var(--accent); border-color: var(--accent); }
 .btn.success:hover{ background: var(--green-dim); }
+#rebootFcBtn:hover{ background: rgba(248,113,113,0.22) !important; border-color: rgba(248,113,113,0.45) !important; color: var(--red) !important; }
 
 /* Sidebar + tables */
 .nav-item:hover{ background: transparent; }
@@ -1262,6 +1276,51 @@
 .msg-row.sev-info .msg-sev{ border-color: rgba(255,255,255,0.14); background: rgba(255,255,255,0.04); color: var(--text2); }
 .msg-row.sev-debug .msg-sev{ border-color: rgba(255,255,255,0.10); background: rgba(255,255,255,0.03); color: var(--text3); }
 
+
+/* =============================
+   RC RADIO CALIBRATION WIZARD
+   ============================= */
+.rcwiz-wrap{display:flex;flex-direction:column;gap:12px;}
+.rcwiz-intro{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:12px;}
+.rcwiz-intro h3{font-size:13px;font-weight:900;color:var(--text);margin-bottom:6px;}
+.rcwiz-intro p{font-size:12px;color:var(--text2);line-height:1.6;}
+.rcwiz-grid{display:grid;grid-template-columns:1.3fr 0.7fr;gap:12px;align-items:start;}
+.rcwiz-panel{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:12px;}
+.rcwiz-panel h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px;}
+.rcwiz-bars{display:flex;flex-direction:column;gap:8px;max-height:54vh;overflow:auto;padding-right:4px;}
+.rcwiz-bars::-webkit-scrollbar{width:6px;}
+.rcwiz-bars::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.rcbar-row{display:grid;grid-template-columns:74px 1fr 72px;gap:10px;align-items:center;}
+.rcbar-label{font-family:var(--font);font-size:11px;color:var(--text2);}
+.rcbar-track{position:relative;height:22px;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02));border:1px solid var(--border);overflow:hidden;}
+.rcbar-zones{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg, rgba(248,113,113,0.12) 0%, rgba(248,113,113,0.07) 16%, rgba(52,211,153,0.10) 16%, rgba(52,211,153,0.12) 84%, rgba(248,113,113,0.07) 84%, rgba(248,113,113,0.12) 100%);}
+.rcbar-midline{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.18);}
+.rcbar-marker{position:absolute;top:2px;bottom:2px;width:2px;border-radius:2px;transform:translateX(-50%);}
+.rcbar-marker.live{background:var(--accent2);box-shadow:0 0 0 3px rgba(96,165,250,0.18);}
+.rcbar-marker.min{background:var(--amber);opacity:0.9;}
+.rcbar-marker.max{background:var(--amber);opacity:0.9;}
+.rcbar-marker.trim{background:var(--green);opacity:0.9;}
+.rcbar-text{font-family:var(--font);font-size:11px;color:var(--text2);text-align:right;}
+.rcwiz-kpi{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;}
+.rcwiz-kpi .kv{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:10px;}
+.rcwiz-kpi .k{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;}
+.rcwiz-kpi .v{margin-top:4px;font-family:var(--font);font-size:16px;color:var(--text);}
+.rcwiz-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center;}
+.rcwiz-callout{margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(59,130,246,0.25);background:rgba(59,130,246,0.08);color:var(--text2);font-size:12px;line-height:1.55;}
+.rcwiz-table{width:100%;border-collapse:collapse;font-size:12px;}
+.rcwiz-table th,.rcwiz-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;}
+.rcwiz-table th{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.7px;}
+.rcwiz-table td{color:var(--text2);font-family:var(--font);}
+.rcwiz-table tr:last-child td{border-bottom:none;}
+.rcwiz-stage{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--bg4);font-family:var(--font);font-size:11px;color:var(--text2);}
+.rcwiz-stage.active{border-color:rgba(52,211,153,0.35);background:rgba(52,211,153,0.10);color:var(--green);}
+.rcwiz-stage.capture{border-color:rgba(251,191,36,0.35);background:rgba(251,191,36,0.10);color:var(--amber);}
+.rcwiz-stage.done{border-color:rgba(96,165,250,0.35);background:rgba(59,130,246,0.10);color:var(--accent2);}
+@media (max-width: 980px){ .rcwiz-grid{grid-template-columns:1fr;} }
+
+
+
+
 </style>
 </head>
 <body>
@@ -1269,7 +1328,7 @@
 <div class="topbar" id="topbar">
   <div class="logo">
     <a href="javascript:safeReload();"><div class="logo-icon">✈</div></a>
-    ArduPilot Configurator v0.1.47.13
+    ArduPilot Web Configurator v0.1.48.0
   </div>
   <div class="topbar-spacer"></div>
   <div id="statusPill" class="status-pill empty">
@@ -1294,7 +1353,7 @@
   <button class="btn mav-write-btn" id="writeParamsBtn" onclick="writeChangedParams()" disabled title="Write changed parameters to flight controller">
     ⬆ Write to FC
   </button>
-  <button class="btn mav-write-btn" id="rebootFcBtn" onclick="rebootFcAndReloadParams()" disabled title="Send reboot command (MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN), wait for ACK, then show Connect dialog">
+  <button class="btn mav-write-btn reboot" id="rebootFcBtn" onclick="rebootFcAndReloadParams()" disabled title="Send reboot command (MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN), wait for ACK, then show Connect dialog">
  ⏻ Reboot FC
  </button>
   <button class="btn" id="diffBtn" onclick="toggleDiff()" disabled>
@@ -1498,6 +1557,152 @@ function handleAttitudeFrame(frame){
   } catch(e) {}
 }
 
+
+window.__rcCalLive = { channels:{}, rssi:null, lastTs:0, active:false, timer:null, watchdog:null, lastRequestTs:0, requestCount:0, lastStreamRateHz:10, lastRecoveryReason:'', noDataWarnings:0 };
+function rcCalNormalizePwm(v){
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0 || n >= 65535) return null;
+  return Math.max(800, Math.min(2200, Math.round(n)));
+}
+function handleRcChannelsFrame(frame){
+  // ── RC_CHANNELS payload layout (MAVLink common.xml, msg #65) ──────────────
+  //  [0-3]  time_boot_ms  uint32
+  //  [4-5]  chan1_raw … [38-39] chan18_raw  uint16 each
+  //  [40]   chancount     uint8   ← NOTE: was wrongly read from [4] in 16p and all patches
+  //  [41]   rssi          uint8
+  // RC_CHANNELS_RAW layout (msg #35):
+  //  [0-3]  time_boot_ms  uint32
+  //  [4-5]  chan1_raw … [18-19] chan8_raw  uint16 each
+  //  [20]   port          uint8
+  //  [21]   rssi          uint8
+  // ──────────────────────────────────────────────────────────────────────────
+  try {
+    if (!frame || !frame.payload) return;
+    const msgId = Number(frame.msgId);
+    const out = {};
+    let rssi = null;
+    if (msgId === 35 && frame.payload.length >= 22) {
+      const dv = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength);
+      for (let i=1;i<=8;i++) {
+        const v = rcCalNormalizePwm(dv.getUint16(4 + ((i-1)*2), true));
+        if (v !== null) out[i] = v;
+      }
+      rssi = Number(frame.payload[21]);
+    } else if (msgId === 65 && frame.payload.length >= 42) {
+      const dv = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength);
+      // RC_CHANNELS (65) payload layout (MAVLink spec):
+      //   [0-3]  time_boot_ms (uint32)
+      //   [4-5]  chan1_raw … [38-39] chan18_raw (uint16 each)
+      //   [40]   chancount (uint8)   ← was wrongly read from [4]
+      //   [41]   rssi (uint8)
+      const count = Number(frame.payload[40] || 0);
+      const n = Math.max(8, Math.min(18, count > 0 ? count : 18));
+      for (let i=1;i<=n;i++) {
+        const off = 4 + ((i-1)*2);   // ← was wrongly 5 + (i-1)*2
+        if (off + 1 >= frame.payload.length) break;
+        const v = rcCalNormalizePwm(dv.getUint16(off, true));
+        if (v !== null) out[i] = v;
+      }
+      rssi = Number(frame.payload[41]);
+    } else {
+      return;
+    }
+    if (!Object.keys(out).length) return;
+    window.__rcCalLive.channels = Object.assign({}, window.__rcCalLive.channels || {}, out);
+    window.__rcCalLive.rssi = (Number.isFinite(rssi) && rssi >= 0 && rssi <= 254) ? rssi : null;
+    window.__rcCalLive.lastTs = Date.now();
+    if (agentState && agentState.rccal) {
+      const st = agentState.rccal;
+      for (const [k,v] of Object.entries(out)) {
+        const ch = String(k);
+        if (st.captureExtremes) {
+          if (!Number.isFinite(Number(st.mins[ch])) || Number(v) < Number(st.mins[ch])) st.mins[ch] = Number(v);
+          if (!Number.isFinite(Number(st.maxs[ch])) || Number(v) > Number(st.maxs[ch])) st.maxs[ch] = Number(v);
+        }
+        if (st.captureTrim) st.trims[ch] = Number(v);
+      }
+    }
+    updateRcCalUi();
+  } catch(e) {}
+}
+function rcCalGetMavRxAgeMs(){
+  try { return (mav && typeof mav.getLastRxAgeMs === 'function') ? mav.getLastRxAgeMs() : Infinity; } catch(e) { return Infinity; }
+}
+function rcCalGeneralLinkHealthy(){
+  try { return !!(mav && transport && transport.isOpen && rcCalGetMavRxAgeMs() < 3000); } catch(e) { return false; }
+}
+function rcCalRequestStream(startStop=1, rateHz){
+  try {
+    const live = window.__rcCalLive || (window.__rcCalLive = { channels:{}, rssi:null, lastTs:0, active:false, timer:null, watchdog:null, lastRequestTs:0, requestCount:0, lastStreamRateHz:10, lastRecoveryReason:'', noDataWarnings:0 });
+    const chosenRate = Math.max(1, Math.min(50, Number(rateHz || live.lastStreamRateHz || 10)));
+    live.lastStreamRateHz = chosenRate;
+    live.lastRequestTs = Date.now();
+    if (Number(startStop)) live.requestCount = Number(live.requestCount || 0) + 1;
+    if (!(mav && transport && transport.isOpen)) return;
+    mavRequestDataStream(3, chosenRate, startStop);
+    rcCalRequestSpecificMessages(startStop, chosenRate);
+  } catch(e) {}
+}
+function rcCalKickStreamRecovery(reason='retry'){
+  try {
+    const live = window.__rcCalLive || {};
+    const age = rcCalLiveAgeMs();
+    let rate = 10;
+    if (!Number.isFinite(age) || age > 6000) rate = 50;
+    else if (age > 2500) rate = 25;
+    else if (reason === 'manual') rate = 25;
+    live.lastRecoveryReason = String(reason || 'retry');
+    rcCalRequestStream(1, rate);
+  } catch(e) {}
+}
+function rcCalManualResendRequest(){
+  try {
+    rcCalKickStreamRecovery('manual');
+    updateRcCalUi();
+    showToast('Re-sent RC stream request', true);
+  } catch(e) {}
+}
+function rcCalStartMonitoring(){
+  try {
+    const live = window.__rcCalLive || {};
+    live.active = true;
+    live.noDataWarnings = 0;
+    live.requestCount = 0;
+    live.lastRecoveryReason = 'start';
+    rcCalKickStreamRecovery('start');
+    if (live.timer) { clearInterval(live.timer); live.timer = null; }
+    live.timer = setInterval(()=>{
+      try {
+        if (!(mav && transport && transport.isOpen)) { updateRcCalUi(); return; }
+        const rcAge = rcCalLiveAgeMs();
+        if (!Number.isFinite(rcAge) || rcAge > 1200) rcCalKickStreamRecovery('stale');
+        updateRcCalUi();
+      } catch(e) {}
+    }, 1000);
+    if (live.watchdog) { clearInterval(live.watchdog); live.watchdog = null; }
+    live.watchdog = setInterval(()=>{
+      try {
+        if (!live.active) return;
+        const rcAge = rcCalLiveAgeMs();
+        if (rcCalGeneralLinkHealthy() && (!Number.isFinite(rcAge) || rcAge > 8000)) {
+          if ((live.noDataWarnings || 0) < 1) {
+            live.noDataWarnings = (live.noDataWarnings || 0) + 1;
+            showToast('MAVLink is active, but no fresh RC channel frames are arriving. Use Re-send RC Stream Request or check FC RC stream output / SRx_RC_CHAN rate.', false);
+          }
+        }
+      } catch(e) {}
+    }, 2000);
+  } catch(e) {}
+}
+function rcCalStopMonitoring(){
+  try {
+    const live = window.__rcCalLive || {};
+    live.active = false;
+    if (live.timer) { clearInterval(live.timer); live.timer = null; }
+    if (live.watchdog) { clearInterval(live.watchdog); live.watchdog = null; }
+    try { rcCalRequestStream(0, live.lastStreamRateHz || 10); } catch(e) {}
+  } catch(e) {}
+}
 function updateArtificialHorizon(){
   const t = window.__telemetry || {};
   const inst = document.getElementById('ahInstrument');
@@ -1544,6 +1749,35 @@ async function mavRequestDataStream(streamId, rateHz, startStop=1){
     p[4] = (rate >> 8) & 0xFF;
     p[5] = (Number(startStop) ? 1 : 0) & 0xFF;
     await mav.send(66, p);
+  } catch(e) {}
+}
+async function mavSetMessageInterval(messageId, intervalUs){
+  try {
+    if (!mav) return;
+    const ts = (paramClient && paramClient.targetSysId) ? paramClient.targetSysId : 1;
+    const tc = (paramClient && paramClient.targetCompId) ? paramClient.targetCompId : 1;
+    await mavSendCommandLong(511, [Number(messageId)||0, Number(intervalUs)||0, 0, 0, 0, 0, 0], ts, tc, 0);
+  } catch(e) {}
+}
+async function mavRequestMessageOnce(messageId){
+  try {
+    if (!mav) return;
+    const ts = (paramClient && paramClient.targetSysId) ? paramClient.targetSysId : 1;
+    const tc = (paramClient && paramClient.targetCompId) ? paramClient.targetCompId : 1;
+    await mavSendCommandLong(512, [Number(messageId)||0, 0, 0, 0, 0, 0, 0], ts, tc, 0);
+  } catch(e) {}
+}
+function rcCalRequestSpecificMessages(startStop=1, rateHz=10){
+  try {
+    if (!(mav && transport && transport.isOpen)) return;
+    const hz = Math.max(1, Math.min(50, Number(rateHz) || 10));
+    const intervalUs = Number(startStop) ? Math.max(20000, Math.round(1000000 / hz)) : -1;
+    mavSetMessageInterval(65, intervalUs);
+    mavSetMessageInterval(35, intervalUs);
+    if (Number(startStop)) {
+      mavRequestMessageOnce(65);
+      mavRequestMessageOnce(35);
+    }
   } catch(e) {}
 }
 
@@ -4005,11 +4239,12 @@ class MavlinkCodec {
       21: 159,  // PARAM_REQUEST_LIST
       22: 220,  // PARAM_VALUE
       23: 168,  // PARAM_SET
-      66: 148,  // REQUEST_DATA_STREAM,
- 76: 152, // COMMAND_LONG
- 77: 143, // COMMAND_ACK
- 30: 39, // ATTITUDE
-
+      30: 39,   // ATTITUDE
+      35: 244,  // RC_CHANNELS_RAW
+      65: 118,  // RC_CHANNELS
+      66: 148,  // REQUEST_DATA_STREAM
+      76: 152,  // COMMAND_LONG
+      77: 143,  // COMMAND_ACK
       253: 83,  // STATUSTEXT
 };
   }
@@ -4290,6 +4525,7 @@ class ArduPilotParamClient {
     this.mav.onMessage = (m) => {
       try { if (m && m.msgId === 22) this._handleParamValue(m.payload); } catch(_) {}
       try { if (m && m.msgId === 30) handleAttitudeFrame(m); } catch(_) {}
+      try { if (m && (m.msgId === 35 || m.msgId === 65)) handleRcChannelsFrame(m); } catch(_) {}
     };
   }
 
@@ -4567,6 +4803,9 @@ async function startConnect() {
       btn.textContent = 'Connect & Read Params';
       return;
     }
+    // Lock follow-on requests (RC stream, reboot, param reads) to the FC that answered.
+    paramClient.targetSysId = hb.sysId;
+    paramClient.targetCompId = hb.compId;
 
     // Heartbeat received — heartbeat timer keeps running during fetchAll so
     // ArduPilot doesn't consider the GCS link lost.
@@ -4915,7 +5154,8 @@ const AGENTS = [
   { id: 'vtol', icon: '🧠', title: 'VTOL Setup Wizard', subtitle: 'Step-by-step VTOL' },
   { id: 'airframe', icon: '🧩', title: 'Airframe Mapping Wizard', subtitle: 'Plane/Copter output mapping' },
   { id: 'levelhorizon', icon: '🟦', title: 'Level Horizon Wizard', subtitle: 'Calibrate FC level attitude' },
-  { id: 'accelcal', icon: '🧭', title: 'Accelerometer Calibration', subtitle: '6‑orientation accel calibration' }
+  { id: 'accelcal', icon: '🧭', title: 'Accelerometer Calibration', subtitle: '6‑orientation accel calibration' },
+  { id: 'rccal', icon: '📡', title: 'Radio Calibration Wizard', subtitle: 'Mission Planner style RC calibration' }
 ];
 
 const VTOL_TYPES = [
@@ -4999,6 +5239,7 @@ function vtolSteps(type){
 
 function renderAgents(area){
   if (agentState.selected !== 'levelhorizon') { try { stopLevelHorizonMonitor(); } catch(_) {} }
+  if (agentState.selected !== 'rccal') { try { rcCalStopMonitoring(); } catch(_) {} }
   const hasParams = agentHasParams();
   const cat = CATEGORIES.find(c => c.id === 'agents');
 
@@ -5054,10 +5295,14 @@ function renderAgents(area){
     renderAccelCalWizard(area);
     return;
   }
+  if (agentState.selected === 'rccal') {
+    renderRcCalWizard(area);
+    return;
+  }
 }
 
-function openAgent(id){ try { stopLevelHorizonMonitor(); } catch(_) {} agentState.selected = id; if (id==='vtol') agentState.stepIndex = 0; if (id==='levelhorizon') agentState.levelHorizon = { stepIndex: 0, completed: false, lastAck: null, toleranceDeg: 5.0, monitorTimer: null }; if (id==='accelcal') agentState.accel = { active:false, completed:false, stepIndex:0, done:{}, lastSendTs:0 }; renderAgents(document.getElementById('contentArea')); }
-function closeAgent(){ try { stopLevelHorizonMonitor(); } catch(_) {} agentState.selected = null; renderAgents(document.getElementById('contentArea')); }
+function openAgent(id){ try { stopLevelHorizonMonitor(); } catch(_) {} try { rcCalStopMonitoring(); } catch(_) {} agentState.selected = id; if (id==='vtol') agentState.stepIndex = 0; if (id==='levelhorizon') agentState.levelHorizon = { stepIndex: 0, completed: false, lastAck: null, toleranceDeg: 5.0, monitorTimer: null }; if (id==='accelcal') agentState.accel = { active:false, completed:false, stepIndex:0, done:{}, lastSendTs:0 }; if (id==='rccal') agentState.rccal = { stepIndex:0, active:false, captureExtremes:false, captureTrim:false, mins:{}, maxs:{}, trims:{}, reversed:{} }; renderAgents(document.getElementById('contentArea')); }
+function closeAgent(){ try { stopLevelHorizonMonitor(); } catch(_) {} try { rcCalStopMonitoring(); } catch(_) {} agentState.selected = null; renderAgents(document.getElementById('contentArea')); }
 
 
 
@@ -6023,6 +6268,267 @@ const LEVEL_HORIZON_STEPS = [
   { id:'finish', title:'Step 3 — Review / complete', desc:'The FC should now treat the current attitude as level. You can optionally refresh trim values or reboot if your workflow requires it.' },
 ];
 
+
+// ============================================================
+// RADIO CALIBRATION WIZARD (Mission Planner style)
+// ============================================================
+const RC_CAL_STEPS = [
+  { id:'prep', title:'Step 1 — Verify transmitter / receiver', desc:'Power the transmitter, keep trims centered, and confirm live bars move when you touch each stick, switch, or knob. If the wizard stays in WAITING FOR LIVE RC, use the resend control and diagnostics below.' },
+  { id:'capture', title:'Step 2 — Capture min / max', desc:'Start capture, then move every stick, switch, and knob through its full range several times.' },
+  { id:'trim', title:'Step 3 — Capture centered trims', desc:'Return sticks to their natural center positions (throttle low as appropriate), then capture trim values.' },
+  { id:'review', title:'Step 4 — Review and apply', desc:'Review RCx_MIN / RCx_MAX / RCx_TRIM values, optionally toggle channel reverse flags, then write or export.' }
+];
+function rcCalEnsureState(){
+  if (!agentState.rccal) agentState.rccal = { stepIndex:0, active:false, captureExtremes:false, captureTrim:false, mins:{}, maxs:{}, trims:{}, reversed:{} };
+  const s = agentState.rccal;
+  if (!s.mins) s.mins = {};
+  if (!s.maxs) s.maxs = {};
+  if (!s.trims) s.trims = {};
+  if (!s.reversed) s.reversed = {};
+  return s;
+}
+function rcCalStep(i){ rcCalEnsureState().stepIndex = Math.max(0, Math.min(RC_CAL_STEPS.length-1, Number(i)||0)); renderAgents(document.getElementById('contentArea')); }
+function rcCalReset(){
+  const s = rcCalEnsureState();
+  s.active = false; s.captureExtremes = false; s.captureTrim = false; s.mins = {}; s.maxs = {}; s.trims = {}; s.reversed = {}; s.stepIndex = 0;
+  try { rcCalStopMonitoring(); } catch(e) {}
+  try {
+    if (window.__rcCalLive) {
+      window.__rcCalLive.channels = {};
+      window.__rcCalLive.rssi = null;
+      window.__rcCalLive.lastTs = 0;
+      window.__rcCalLive.lastRequestTs = 0;
+      window.__rcCalLive.requestCount = 0;
+      window.__rcCalLive.lastStreamRateHz = 10;
+      window.__rcCalLive.lastRecoveryReason = '';
+      window.__rcCalLive.noDataWarnings = 0;
+    }
+  } catch(e) {}
+  showToast('RC calibration state reset', true);
+  renderAgents(document.getElementById('contentArea'));
+}
+function rcCalLiveAgeMs(){ return (window.__rcCalLive && window.__rcCalLive.lastTs) ? (Date.now() - window.__rcCalLive.lastTs) : Infinity; }
+function rcCalIsLive(){ return !!(agentIsConnected() && rcCalLiveAgeMs() < 3000 && Object.keys((window.__rcCalLive && window.__rcCalLive.channels) || {}).length); }
+function rcCalChannelValue(ch){
+  const v = window.__rcCalLive && window.__rcCalLive.channels ? window.__rcCalLive.channels[String(ch)] : null;
+  return Number.isFinite(Number(v)) ? Number(v) : null;
+}
+function rcPctFromPwm(v){ const n = Number(v); if (!Number.isFinite(n)) return 50; return Math.max(0, Math.min(100, ((n-800)/1400)*100)); }
+function rcBarRow(ch){
+  const s = rcCalEnsureState();
+  const live = rcCalChannelValue(ch);
+  const minv = Number.isFinite(Number(s.mins[String(ch)])) ? Number(s.mins[String(ch)]) : null;
+  const maxv = Number.isFinite(Number(s.maxs[String(ch)])) ? Number(s.maxs[String(ch)]) : null;
+  const trimv = Number.isFinite(Number(s.trims[String(ch)])) ? Number(s.trims[String(ch)]) : null;
+  const livePct = rcPctFromPwm(live);
+  const minPct = rcPctFromPwm(minv);
+  const maxPct = rcPctFromPwm(maxv);
+  const trimPct = rcPctFromPwm(trimv);
+  return `
+    <div class="rcbar-row">
+      <div class="rcbar-label">CH${ch}</div>
+      <div class="rcbar-track">
+        <div class="rcbar-zones"></div>
+        <div class="rcbar-midline"></div>
+        ${minv !== null ? `<div class="rcbar-marker min" style="left:${minPct}%" title="Min ${minv}"></div>` : ''}
+        ${maxv !== null ? `<div class="rcbar-marker max" style="left:${maxPct}%" title="Max ${maxv}"></div>` : ''}
+        ${trimv !== null ? `<div class="rcbar-marker trim" style="left:${trimPct}%" title="Trim ${trimv}"></div>` : ''}
+        ${live !== null ? `<div class="rcbar-marker live" style="left:${livePct}%" title="Live ${live}"></div>` : ''}
+      </div>
+      <div class="rcbar-text">${live !== null ? live : '—'}</div>
+    </div>`;
+}
+function rcCalStatusHtml(){
+  const s = rcCalEnsureState();
+  const live = window.__rcCalLive || {};
+  const now = Date.now();
+  const reqAge = live.lastRequestTs ? ((now - live.lastRequestTs) / 1000).toFixed(1) + 's ago' : 'not sent yet';
+  const frameAge = live.lastTs ? ((now - live.lastTs) / 1000).toFixed(1) + 's ago' : 'none yet';
+  const linkHealthy = rcCalGeneralLinkHealthy();
+  if (!agentIsConnected()) return '<span class="rcwiz-stage">OFFLINE</span>';
+  if (!rcCalIsLive()) {
+    const hint = linkHealthy ? 'MAVLink traffic is active, but the FC is not currently delivering fresh RC channel frames into the wizard state.' : 'No recent MAVLink traffic detected from the FC yet.';
+    return `<div><span class="rcwiz-stage capture">WAITING FOR LIVE RC</span><div style="margin-top:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.03);font-size:11px;color:var(--text2);line-height:1.55;"><div><strong style="color:var(--text);">Link state:</strong> ${linkHealthy ? 'MAVLink active' : 'No recent MAVLink traffic'}</div><div><strong style="color:var(--text);">Last RC frame:</strong> ${frameAge}</div><div><strong style="color:var(--text);">Last RC stream request:</strong> ${reqAge}</div><div><strong style="color:var(--text);">Requests sent:</strong> ${Number(live.requestCount || 0)} @ ${Number(live.lastStreamRateHz || 10)}Hz</div><div><strong style="color:var(--text);">Recovery mode:</strong> ${live.lastRecoveryReason || 'idle'}</div><div style="margin-top:6px;color:${linkHealthy ? 'var(--amber)' : 'var(--red)'};">${hint}</div></div><div class="rcwiz-actions" style="margin-top:8px;"><button class="btn" onclick="rcCalManualResendRequest()">Re-send RC Stream Request</button></div></div>`;
+  }
+  if (s.captureTrim) return '<span class="rcwiz-stage capture">CAPTURING TRIMS</span>';
+  if (s.captureExtremes) return '<span class="rcwiz-stage capture">CAPTURING EXTREMES</span>';
+  if (Object.keys(s.trims||{}).length) return '<span class="rcwiz-stage done">READY TO APPLY</span>';
+  return '<span class="rcwiz-stage active">LIVE RC DETECTED</span>';
+}
+async function rcCalStart(){
+  const s = rcCalEnsureState();
+  if (!agentIsConnected()) { showToast('⚠ Connect to the flight controller first', false); return; }
+  s.active = true; s.captureExtremes = true; s.captureTrim = false; s.stepIndex = 1;
+  s.mins = {}; s.maxs = {}; s.trims = {};
+  rcCalStartMonitoring();
+  try {
+    const ts = (paramClient && paramClient.targetSysId) ? paramClient.targetSysId : 1;
+    const tc = (paramClient && paramClient.targetCompId) ? paramClient.targetCompId : 1;
+    await mavSendCommandLong(241, [0,0,0,1,0,0,0], ts, tc, 0);
+  } catch(e) {}
+  showToast('✓ RC capture started — move all sticks, switches, and knobs through their full travel', true);
+  renderAgents(document.getElementById('contentArea'));
+}
+function rcCalStopExtremes(){ const s = rcCalEnsureState(); s.captureExtremes = false; s.stepIndex = 2; showToast('✓ Extremes captured — center the sticks for trim capture', true); renderAgents(document.getElementById('contentArea')); }
+function rcCalCaptureTrim(){
+  const s = rcCalEnsureState();
+  if (!rcCalIsLive()) { showToast('⚠ Waiting for live RC channel data', false); return; }
+  s.captureTrim = true;
+  const chans = window.__rcCalLive.channels || {};
+  for (const [k,v] of Object.entries(chans)) s.trims[String(k)] = Number(v);
+  s.captureTrim = false; s.stepIndex = 3;
+  showToast('✓ Trim values captured', true);
+  renderAgents(document.getElementById('contentArea'));
+}
+function rcCalSetReverse(ch, checked){ rcCalEnsureState().reversed[String(ch)] = !!checked; }
+async function rcCalFinishMode(){
+  if (!agentIsConnected()) return;
+  try {
+    const ts = (paramClient && paramClient.targetSysId) ? paramClient.targetSysId : 1;
+    const tc = (paramClient && paramClient.targetCompId) ? paramClient.targetCompId : 1;
+    await mavSendCommandLong(241, [0,0,0,0,0,0,0], ts, tc, 0);
+  } catch(e) {}
+}
+function rcCalRowsForReview(){
+  const s = rcCalEnsureState();
+  let rows = '';
+  for (let i=1;i<=16;i++) {
+    const minv = s.mins[String(i)]; const maxv = s.maxs[String(i)]; const trimv = s.trims[String(i)];
+    const has = Number.isFinite(Number(minv)) || Number.isFinite(Number(maxv)) || Number.isFinite(Number(trimv));
+    if (!has) continue;
+    const revKey = `RC${i}_REVERSED`;
+    const currentRev = String(currentParams[revKey] || '0') === '1';
+    const checked = (String(i) in s.reversed) ? !!s.reversed[String(i)] : currentRev;
+    rows += `<tr><td>RC${i}</td><td>${Number.isFinite(Number(minv)) ? Number(minv) : '—'}</td><td>${Number.isFinite(Number(trimv)) ? Number(trimv) : '—'}</td><td>${Number.isFinite(Number(maxv)) ? Number(maxv) : '—'}</td><td><label style="display:inline-flex;gap:6px;align-items:center;font-family:var(--sans);font-size:12px;color:var(--text2);"><input type="checkbox" ${checked?'checked':''} onchange="rcCalSetReverse(${i}, this.checked)"> reverse</label></td></tr>`;
+  }
+  return rows || '<tr><td colspan="5" style="font-family:var(--sans);color:var(--text3);">No captured values yet.</td></tr>';
+}
+function rcCalApplyToParams(){
+  const s = rcCalEnsureState();
+  if (!agentHasParams()) { showToast('⚠ Load parameters or connect to FC first', false); return; }
+  let changed = 0;
+  for (let i=1;i<=16;i++) {
+    const ch = String(i);
+    if (Number.isFinite(Number(s.mins[ch]))) { setParam(`RC${i}_MIN`, String(Math.round(Number(s.mins[ch])))); changed++; }
+    if (Number.isFinite(Number(s.maxs[ch]))) { setParam(`RC${i}_MAX`, String(Math.round(Number(s.maxs[ch])))); changed++; }
+    if (Number.isFinite(Number(s.trims[ch]))) { setParam(`RC${i}_TRIM`, String(Math.round(Number(s.trims[ch])))); changed++; }
+    if ((ch in s.reversed) || (`RC${i}_REVERSED` in currentParams)) {
+      const rev = (ch in s.reversed) ? (s.reversed[ch] ? '1' : '0') : String(currentParams[`RC${i}_REVERSED`] || '0');
+      if (`RC${i}_REVERSED` in currentParams || ch in s.reversed) { setParam(`RC${i}_REVERSED`, rev); changed++; }
+    }
+  }
+  showToast(changed ? '✓ Applied captured RC values (pending write)' : 'ℹ No captured RC values to apply', !!changed);
+}
+function updateRcCalUi(){
+  if (!agentState || agentState.selected !== 'rccal') return;
+  const bars = document.getElementById('rcwizBars');
+  if (bars) bars.innerHTML = Array.from({length:16}, (_,i)=>rcBarRow(i+1)).join('');
+  const livePill = document.getElementById('rcwizLivePill');
+  if (livePill) livePill.outerHTML = rcCalStatusHtml();
+  const ageEl = document.getElementById('rcwizAgeVal');
+  if (ageEl) ageEl.textContent = rcCalIsLive() ? Math.max(0, Math.round(rcCalLiveAgeMs()/100)/10).toFixed(1) + 's' : '—';
+  const rssiEl = document.getElementById('rcwizRssiVal');
+  if (rssiEl) {
+    const r = window.__rcCalLive ? window.__rcCalLive.rssi : null;
+    rssiEl.textContent = (Number.isFinite(Number(r)) && Number(r) <= 254) ? String(r) : '—';
+  }
+  const chanEl = document.getElementById('rcwizChanVal');
+  if (chanEl) chanEl.textContent = String(Object.keys((window.__rcCalLive && window.__rcCalLive.channels) || {}).length || 0);
+  const capEl = document.getElementById('rcwizCapturedVal');
+  if (capEl) {
+    const s = rcCalEnsureState();
+    const n = Object.keys(s.trims||{}).length || Object.keys(s.mins||{}).length || 0;
+    capEl.textContent = String(n);
+  }
+  const review = document.getElementById('rcwizReviewBody');
+  if (review) review.innerHTML = rcCalRowsForReview();
+}
+function renderRcCalWizard(area){
+  const connected = agentIsConnected();
+  const st = rcCalEnsureState();
+  const idx = Math.max(0, Math.min(RC_CAL_STEPS.length-1, st.stepIndex || 0));
+  const step = RC_CAL_STEPS[idx];
+  area.innerHTML = `
+    <div class="content-header">
+      <div>
+        <h1>🤖 Configuration Agents · 📡 Radio Calibration Wizard</h1>
+        <p>Mission Planner style RC calibration with live channel bars, min / max capture, and RCx_MIN / RCx_MAX / RCx_TRIM staging</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn" onclick="closeAgent()">← Back</button>
+        <button class="btn" onclick="rcCalReset()">↻ Reset</button>
+      </div>
+    </div>
+    <div class="agent-wizard">
+      <div class="agent-steps">
+        <div class="hdr"><div class="t">Steps</div><div style="margin-left:auto;color:var(--text3);font-family:var(--font);font-size:11px;">${idx+1}/${RC_CAL_STEPS.length}</div></div>
+        <div class="list">
+          ${RC_CAL_STEPS.map((it,i)=>`<div class="agent-step ${i===idx?'active':''}" onclick="rcCalStep(${i})"><div class="n">${i+1}</div><div class="body"><div class="st">${it.title}</div><div class="sd">${it.desc}</div></div></div>`).join('')}
+        </div>
+      </div>
+      <div class="agent-main">
+        <div class="top">
+          <div class="title">${step.title}</div>
+          <div class="sub">${connected ? 'FC connected' : 'Not connected'} · RC live stream ${rcCalIsLive() ? 'active' : 'idle'}</div>
+        </div>
+        <div class="body">
+          <div class="rcwiz-wrap">
+            <div class="rcwiz-intro">
+              <h3>Workflow</h3>
+              <p>Follow the same broad flow used by Mission Planner: verify the bars move correctly, capture full stick / switch travel, capture centered trims, then stage the resulting RC parameters for write or export. ArduPilot documentation describes RC calibration as capturing each input channel’s minimum, maximum, and trim values; Mission Planner uses green bars to validate live input before committing those values. The newer ArduPilot guidance also marks RC calibration mode by sending <code>MAV_CMD_PREFLIGHT_CALIBRATION</code> with <code>param4=1</code> at start and <code>param4=0</code> when finished.</p>
+              <div class="rcwiz-callout">Safety: keep props disconnected while calibrating. This wizard is intended for a connected flight controller because it depends on live RC channel data.</div>
+            </div>
+            <div class="rcwiz-grid">
+              <div class="rcwiz-panel">
+                <h3>Live Channel Bars</h3>
+                <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;">
+                  <div id="rcwizLivePill">${rcCalStatusHtml()}</div>
+                  <div style="font-size:11px;color:var(--text3);font-family:var(--font);">blue = live · amber = min/max · green = trim</div>
+                </div>
+                <div id="rcwizBars" class="rcwiz-bars">${Array.from({length:16}, (_,i)=>rcBarRow(i+1)).join('')}</div>
+                <div class="rcwiz-actions">
+                  <button class="btn primary" ${connected ? '' : 'disabled'} onclick="rcCalStart()">Start Calibration</button>
+                  <button class="btn" ${connected ? '' : 'disabled'} onclick="rcCalStopExtremes()">Done Capturing Extremes</button>
+                  <button class="btn" ${connected ? '' : 'disabled'} onclick="rcCalCaptureTrim()">Capture Trim</button>
+                  <button class="btn" onclick="updateRcCalUi()">Refresh</button>
+                </div>
+              </div>
+              <div class="rcwiz-panel">
+                <h3>Status</h3>
+                <div class="rcwiz-kpi">
+                  <div class="kv"><div class="k">Live Age</div><div id="rcwizAgeVal" class="v">—</div></div>
+                  <div class="kv"><div class="k">RSSI</div><div id="rcwizRssiVal" class="v">—</div></div>
+                  <div class="kv"><div class="k">Live Channels</div><div id="rcwizChanVal" class="v">0</div></div>
+                  <div class="kv"><div class="k">Captured</div><div id="rcwizCapturedVal" class="v">0</div></div>
+                </div>
+                <div class="rcwiz-callout">If bars do not move, confirm the receiver is wired and bound correctly, and verify ArduPilot is streaming RC channel data while connected.</div>
+                <div class="agent-actions">
+                  <button class="btn" ${connected ? '' : 'disabled'} onclick="rcCalStartMonitoring()">Request RC Stream</button>
+                  <button class="btn" ${connected ? '' : 'disabled'} onclick="rcCalStopMonitoring()">Stop Stream</button>
+                </div>
+              </div>
+            </div>
+            <div class="rcwiz-panel">
+              <h3>Review / Apply</h3>
+              <table class="rcwiz-table">
+                <thead><tr><th>Channel</th><th>Min</th><th>Trim</th><th>Max</th><th>Reverse</th></tr></thead>
+                <tbody id="rcwizReviewBody">${rcCalRowsForReview()}</tbody>
+              </table>
+              <div class="rcwiz-actions">
+                <button class="btn primary" onclick="rcCalApplyToParams()">Apply to Parameters</button>
+                <button class="btn" ${connected ? '' : 'disabled'} onclick="agentWriteNow()">Write to FC</button>
+                <button class="btn" onclick="exportParams()" ${agentHasParams() ? '' : 'disabled'}>Export .param</button>
+                <button class="btn" onclick="toggleDiff()" ${agentHasParams() ? '' : 'disabled'}>Changes</button>
+                <button class="btn" ${connected ? '' : 'disabled'} onclick="rcCalFinishMode()">Finish Calibration Mode</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  rcCalStartMonitoring();
+  updateRcCalUi();
+}
 function levelHorizonEnsureState(){
   if (!agentState.levelHorizon) {
     agentState.levelHorizon = { stepIndex: 0, completed: false, lastAck: null, toleranceDeg: 5.0, monitorTimer: null };
@@ -7620,6 +8126,682 @@ document.addEventListener('keydown', e => {
   }
 });
 </script>
+
+<style id="rcwiz-16f-style">
+.rcbar-range{position:absolute;top:4px;bottom:4px;border-radius:999px;background:linear-gradient(90deg,rgba(251,191,36,0.16),rgba(96,165,250,0.18));border:1px solid rgba(96,165,250,0.24);pointer-events:none;}
+.rcbar-midband{position:absolute;top:3px;bottom:3px;width:10px;transform:translateX(-50%);border-radius:999px;background:rgba(52,211,153,0.14);border:1px solid rgba(52,211,153,0.28);pointer-events:none;}
+.rcwiz-obs{margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(96,165,250,0.28);background:rgba(59,130,246,0.08);color:var(--text2);font-size:12px;line-height:1.55;}
+.rcwiz-obs .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;}
+.rcwiz-obs .pill{font-size:10px;font-family:var(--font);padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:var(--bg4);color:var(--text2);}
+.rcwiz-obs .pill.good{border-color:rgba(52,211,153,0.35);background:rgba(52,211,153,0.12);color:var(--green);}
+.rcwiz-kpi .v.rc-live-dim{font-size:13px;color:var(--text2);}
+</style>
+<script id="rcwiz-16f-patch">
+(function(){
+  const PATCH_VER = 'v0.1.47.16f';
+  function num(v){ v = Number(v); return Number.isFinite(v) ? v : null; }
+  function clamp(v, lo, hi){ v = Number(v); return Math.max(lo, Math.min(hi, v)); }
+  function pwmPos(v){ return ((clamp(v, 800, 2200) - 800) / 1400) * 100; }
+  function percentile(arr, p){
+    if (!arr || !arr.length) return null;
+    const a = arr.slice().sort((x,y)=>x-y);
+    const idx = (a.length - 1) * p;
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    if (lo === hi) return a[lo];
+    return a[lo] + (a[hi] - a[lo]) * (idx - lo);
+  }
+  function median(arr){ return percentile(arr, 0.5); }
+  function ensureLive(){
+    const live = window.__rcCalLive = window.__rcCalLive || {};
+    live.channels = live.channels || {};
+    live.history = live.history || {};
+    live.historyTs = live.historyTs || {};
+    live.observed = live.observed || {};
+    live.maxHistory = Math.max(90, Math.min(360, Number(live.maxHistory || 180)));
+    live.uiUpdateIntervalMs = Math.max(120, Math.min(500, Number(live.uiUpdateIntervalMs || 180)));
+    live.requestedRateHz = Math.max(4, Math.min(12, Number(live.requestedRateHz || 8)));
+    live.autoStageOnWrite = true;
+    return live;
+  }
+  function getRcState(){
+    const st = (window.agentState && window.agentState.rccal) ? window.agentState.rccal : null;
+    return st;
+  }
+  function getStats(ch){
+    const live = ensureLive();
+    const hist = (live.history && live.history[ch]) ? live.history[ch].filter(v => Number.isFinite(Number(v))).map(Number) : [];
+    if (!hist.length) return null;
+    const mn = Math.min.apply(null, hist);
+    const mx = Math.max.apply(null, hist);
+    const mid = median(hist);
+    return {min: Math.round(mn), max: Math.round(mx), mid: Math.round(mid), span: Math.round(mx - mn), samples: hist.length};
+  }
+  function updateObservedFromHistory(ch){
+    const stats = getStats(ch);
+    if (!stats) return null;
+    const live = ensureLive();
+    live.observed[ch] = stats;
+    const st = getRcState();
+    if (st){
+      st.mins = st.mins || {};
+      st.maxs = st.maxs || {};
+      st.trims = st.trims || {};
+      st.mins[ch] = stats.min;
+      st.maxs[ch] = stats.max;
+      st.trims[ch] = stats.mid;
+    }
+    return stats;
+  }
+  function updateAllObserved(){
+    const live = ensureLive();
+    Object.keys(live.history || {}).forEach(ch => updateObservedFromHistory(String(ch)));
+  }
+  function stageObservedParams(silent){
+    try {
+      const live = ensureLive();
+      updateAllObserved();
+      let count = 0;
+      Object.keys(live.observed || {}).sort((a,b)=>Number(a)-Number(b)).forEach(ch => {
+        const s = live.observed[ch];
+        if (!s || !Number.isFinite(s.min) || !Number.isFinite(s.mid) || !Number.isFinite(s.max)) return;
+        if (s.samples < 8) return;
+        if (s.span < 40) return;
+        if (typeof window.setParam === 'function'){
+          window.setParam('RC' + ch + '_MIN', String(clamp(Math.round(s.min), 800, 2200)), {silent:true});
+          window.setParam('RC' + ch + '_TRIM', String(clamp(Math.round(s.mid), 800, 2200)), {silent:true});
+          window.setParam('RC' + ch + '_MAX', String(clamp(Math.round(s.max), 800, 2200)), {silent:true});
+          count += 3;
+        }
+      });
+      if (!silent && typeof window.showToast === 'function') {
+        if (count) window.showToast('✓ Staged ' + count + ' RC calibration parameter values from observed channel ranges', true);
+        else window.showToast('ℹ Not enough observed RC movement yet to stage calibration values', false);
+      }
+      return count;
+    } catch(e){
+      console.error('stageObservedParams failed', e);
+      return 0;
+    }
+  }
+  window.rcCalStageObservedParams = stageObservedParams;
+
+  const originalHandleRcChannelsFrame = window.handleRcChannelsFrame;
+  window.handleRcChannelsFrame = function(frame){
+    if (typeof originalHandleRcChannelsFrame === 'function') originalHandleRcChannelsFrame.apply(this, arguments);
+    try {
+      const live = ensureLive();
+      const now = Date.now();
+      Object.entries(live.channels || {}).forEach(([ch, rawVal]) => {
+        const v = num(rawVal);
+        if (!Number.isFinite(v)) return;
+        const key = String(ch);
+        const arr = live.history[key] = live.history[key] || [];
+        const tsArr = live.historyTs[key] = live.historyTs[key] || [];
+        const last = arr.length ? Number(arr[arr.length - 1]) : null;
+        const lastTs = tsArr.length ? Number(tsArr[tsArr.length - 1]) : 0;
+        if (last === null || Math.abs(v - last) >= 2 || (now - lastTs) >= 30) {
+          arr.push(Math.round(v));
+          tsArr.push(now);
+          while (arr.length > live.maxHistory) arr.shift();
+          while (tsArr.length > live.maxHistory) tsArr.shift();
+        }
+        updateObservedFromHistory(key);
+      });
+    } catch(e){ console.error('handleRcChannelsFrame patch failed', e); }
+    scheduleRcUiRender();
+  };
+
+  const originalUpdateRcCalUi = window.updateRcCalUi;
+  let rcUiRaf = null;
+  let rcUiLastPaint = 0;
+  function ensureRcRowsAugmented(){
+    document.querySelectorAll('.rcbar-row').forEach(row => {
+      const track = row.querySelector('.rcbar-track');
+      if (!track) return;
+      if (!track.querySelector('.rcbar-range')) {
+        const rg = document.createElement('div');
+        rg.className = 'rcbar-range';
+        track.appendChild(rg);
+      }
+      if (!track.querySelector('.rcbar-midband')) {
+        const mb = document.createElement('div');
+        mb.className = 'rcbar-midband';
+        track.appendChild(mb);
+      }
+      if (!track.querySelector('.rcbar-marker.min')) {
+        const el = document.createElement('div'); el.className = 'rcbar-marker min'; track.appendChild(el);
+      }
+      if (!track.querySelector('.rcbar-marker.trim')) {
+        const el = document.createElement('div'); el.className = 'rcbar-marker trim'; track.appendChild(el);
+      }
+      if (!track.querySelector('.rcbar-marker.max')) {
+        const el = document.createElement('div'); el.className = 'rcbar-marker max'; track.appendChild(el);
+      }
+    });
+  }
+  function channelFromRow(row){
+    const label = row.querySelector('.rcbar-label');
+    if (!label) return null;
+    const m = (label.textContent || '').match(/(\d+)/);
+    return m ? String(Number(m[1])) : null;
+  }
+  function updateRcRowVisuals(){
+    ensureRcRowsAugmented();
+    document.querySelectorAll('.rcbar-row').forEach(row => {
+      const ch = channelFromRow(row);
+      if (!ch) return;
+      const stats = getStats(ch);
+      const track = row.querySelector('.rcbar-track');
+      const text = row.querySelector('.rcbar-text');
+      if (!track || !stats) return;
+      const range = track.querySelector('.rcbar-range');
+      const midband = track.querySelector('.rcbar-midband');
+      const minEl = track.querySelector('.rcbar-marker.min');
+      const trimEl = track.querySelector('.rcbar-marker.trim');
+      const maxEl = track.querySelector('.rcbar-marker.max');
+      const liveEl = track.querySelector('.rcbar-marker.live');
+      const minPct = pwmPos(stats.min), midPct = pwmPos(stats.mid), maxPct = pwmPos(stats.max);
+      if (range){ range.style.left = minPct + '%'; range.style.width = Math.max(1, maxPct - minPct) + '%'; }
+      if (midband){ midband.style.left = midPct + '%'; }
+      if (minEl) minEl.style.left = minPct + '%';
+      if (trimEl) trimEl.style.left = midPct + '%';
+      if (maxEl) maxEl.style.left = maxPct + '%';
+      if (liveEl) {
+        const live = ensureLive();
+        const v = num((live.channels || {})[ch]);
+        if (Number.isFinite(v)) liveEl.style.left = pwmPos(v) + '%';
+      }
+      if (text){
+        const live = ensureLive();
+        const cur = num((live.channels || {})[ch]);
+        const curText = Number.isFinite(cur) ? Math.round(cur) : '—';
+        text.innerHTML = '<div>' + curText + '</div><div style="font-size:10px;color:var(--text3);margin-top:1px;">L ' + stats.min + ' · M ' + stats.mid + ' · H ' + stats.max + '</div>';
+      }
+    });
+  }
+  function injectRcObservedPanel(){
+    const intro = document.querySelector('.rcwiz-intro');
+    if (!intro || intro.querySelector('#rcwizObservedPanel')) return;
+    const panel = document.createElement('div');
+    panel.id = 'rcwizObservedPanel';
+    panel.className = 'rcwiz-obs';
+    panel.innerHTML = [
+      '<strong style="color:var(--text);">Buffered RC range tracking enabled</strong>',
+      '<div>This build slows the RC UI to a delayed time scale, maintains full observed low / mid / high points per channel, and stages RCx_MIN / RCx_TRIM / RCx_MAX automatically when you click <strong>Write to FC</strong>.</div>',
+      '<div class="row">',
+      '  <span class="pill good" id="rcwizPatchVer">' + PATCH_VER + '</span>',
+      '  <span class="pill" id="rcwizRatePill">RC request rate: 8 Hz</span>',
+      '  <span class="pill" id="rcwizUiPill">UI delay: 180 ms</span>',
+      '  <button class="btn" type="button" id="rcwizStageBtn">Stage observed RC params now</button>',
+      '</div>'
+    ].join('');
+    intro.appendChild(panel);
+    const btn = panel.querySelector('#rcwizStageBtn');
+    if (btn) btn.onclick = function(){ stageObservedParams(false); };
+  }
+  function updateObservedPanel(){
+    const ratePill = document.getElementById('rcwizRatePill');
+    const uiPill = document.getElementById('rcwizUiPill');
+    const live = ensureLive();
+    if (ratePill) ratePill.textContent = 'RC request rate: ' + Math.round(Number(live.lastStreamRateHz || live.requestedRateHz || 8)) + ' Hz';
+    if (uiPill) uiPill.textContent = 'UI delay: ' + Math.round(Number(live.uiUpdateIntervalMs || 180)) + ' ms';
+  }
+  function renderRcUi(force){
+    try {
+      if (typeof originalUpdateRcCalUi === 'function') originalUpdateRcCalUi.apply(window, []);
+      updateAllObserved();
+      ensureRcRowsAugmented();
+      updateRcRowVisuals();
+      injectRcObservedPanel();
+      updateObservedPanel();
+    } catch(e) {
+      console.error('renderRcUi failed', e);
+    }
+  }
+  function scheduleRcUiRender(force){
+    const live = ensureLive();
+    const now = Date.now();
+    if (!force && (now - rcUiLastPaint) < live.uiUpdateIntervalMs) {
+      if (!rcUiRaf) {
+        rcUiRaf = requestAnimationFrame(function(){ rcUiRaf = null; scheduleRcUiRender(true); });
+      }
+      return;
+    }
+    rcUiLastPaint = now;
+    if (rcUiRaf) { try { cancelAnimationFrame(rcUiRaf); } catch(_){} rcUiRaf = null; }
+    renderRcUi(force);
+  }
+  window.updateRcCalUi = function(){ scheduleRcUiRender(false); };
+
+  const originalRenderRcCalWizard = window.renderRcCalWizard;
+  window.renderRcCalWizard = function(area){
+    const out = (typeof originalRenderRcCalWizard === 'function') ? originalRenderRcCalWizard.apply(this, arguments) : undefined;
+    try { injectRcObservedPanel(); scheduleRcUiRender(true); } catch(e){}
+    return out;
+  };
+
+  const originalRcCalRequestStream = window.rcCalRequestStream;
+  window.rcCalRequestStream = function(startStop, rateHz){
+    const live = ensureLive();
+    const ss = Number(startStop) ? 1 : 0;
+    let hz = Number(rateHz);
+    if (!Number.isFinite(hz) || hz <= 0) hz = Number(live.requestedRateHz || 8);
+    if (ss) hz = Math.max(4, Math.min(12, Math.round(hz)));
+    live.requestedRateHz = hz;
+    live.lastStreamRateHz = hz;
+    return (typeof originalRcCalRequestStream === 'function') ? originalRcCalRequestStream.call(this, ss, hz) : undefined;
+  };
+
+  window.rcCalKickStreamRecovery = function(reason){
+    try {
+      const live = ensureLive();
+      const age = (typeof window.rcCalLiveAgeMs === 'function') ? window.rcCalLiveAgeMs() : Infinity;
+      let hz = 8;
+      if (!Number.isFinite(age) || age > 8000) hz = 12;
+      else if (age > 3500) hz = 10;
+      else if (String(reason || '') === 'manual') hz = 8;
+      live.lastRecoveryReason = String(reason || 'retry');
+      window.rcCalRequestStream(1, hz);
+    } catch(e){ console.error('rcCalKickStreamRecovery failed', e); }
+  };
+
+  const originalRcCalStartMonitoring = window.rcCalStartMonitoring;
+  window.rcCalStartMonitoring = function(){
+    const live = ensureLive();
+    live.uiUpdateIntervalMs = 180;
+    live.requestedRateHz = 8;
+    live.autoStageOnWrite = true;
+    const out = (typeof originalRcCalStartMonitoring === 'function') ? originalRcCalStartMonitoring.apply(this, arguments) : undefined;
+    if (live.displayTimer) { try { clearInterval(live.displayTimer); } catch(_){} }
+    live.displayTimer = setInterval(function(){ scheduleRcUiRender(true); }, live.uiUpdateIntervalMs);
+    setTimeout(function(){ try { window.rcCalRequestStream(1, live.requestedRateHz); } catch(_){} }, 150);
+    return out;
+  };
+
+  const originalRcCalStopMonitoring = window.rcCalStopMonitoring;
+  window.rcCalStopMonitoring = function(){
+    const live = ensureLive();
+    if (live.displayTimer) { try { clearInterval(live.displayTimer); } catch(_){} live.displayTimer = null; }
+    return (typeof originalRcCalStopMonitoring === 'function') ? originalRcCalStopMonitoring.apply(this, arguments) : undefined;
+  };
+
+  const originalWriteChangedParams = window.writeChangedParams;
+  window.writeChangedParams = async function(){
+    try {
+      const live = ensureLive();
+      const onRcWizard = !!(window.agentState && window.agentState.selected === 'rccal');
+      if (onRcWizard || live.autoStageOnWrite) stageObservedParams(true);
+    } catch(e){ console.error('pre-write RC staging failed', e); }
+    if (typeof originalWriteChangedParams === 'function') return await originalWriteChangedParams.apply(this, arguments);
+  };
+
+  document.addEventListener('click', function(ev){
+    const t = ev.target;
+    if (!t) return;
+    if (t.id === 'writeParamsBtn') {
+      try { stageObservedParams(true); } catch(_){}
+    }
+  }, true);
+
+  // Keep the visible shell version aligned.
+  try {
+    const lg = document.querySelector('.logo');
+    if (lg && /v0\.1\.47\.16e/.test(lg.textContent || '')) lg.innerHTML = lg.innerHTML.replace(/v0\.1\.47\.16e/g, PATCH_VER);
+  } catch(_){}
+})();
+
+</script>
+
+
+<script id="rcwiz-16n-source-fix">
+(function(){
+  const RC_MAX_CH = 18;
+  function num(v){ v = Number(v); return Number.isFinite(v) ? v : null; }
+  function ensureLive(){
+    const live = window.__rcCalLive = window.__rcCalLive || {};
+    live.channels = live.channels || {};
+    live.channelTs = live.channelTs || {};
+    live.channelSource = live.channelSource || {};
+    live.channelSourceTs = live.channelSourceTs || {};
+    live.channelChanged = live.channelChanged || {};
+    live.channelLastMsgId = live.channelLastMsgId || {};
+    return live;
+  }
+  function parseRcFrameDetailed(frame){
+    try {
+      if (!frame || !frame.payload) return null;
+      const msgId = Number(frame.msgId);
+      const payload = frame.payload;
+      const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+      const channels = {};
+      const sources = {};
+      let rssi = null;
+      if (msgId === 35 && payload.length >= 22) {
+        const port = Number(payload[20] || 0);
+        const base = port * 8;
+        for (let i = 1; i <= 8; i++) {
+          const ch = base + i;
+          if (ch > RC_MAX_CH) break;
+          const off = 4 + ((i - 1) * 2);
+          const v = (typeof window.rcCalNormalizePwm === 'function') ? window.rcCalNormalizePwm(dv.getUint16(off, true)) : dv.getUint16(off, true);
+          if (v !== null && Number.isFinite(Number(v))) {
+            channels[String(ch)] = Number(v);
+            sources[String(ch)] = `RC_CHANNELS_RAW p${port}`;
+          }
+        }
+        rssi = Number(payload[21]);
+      } else if (msgId === 65 && payload.length >= 42) {
+        // RC_CHANNELS (65): chancount at byte 40, chan_i at 4+(i-1)*2
+        const count = Number(payload[40] || 0);
+        const n = Math.max(8, Math.min(RC_MAX_CH, count > 0 ? count : RC_MAX_CH));
+        for (let i = 1; i <= n; i++) {
+          const off = 4 + ((i - 1) * 2);   // FIX: was 5 + (i-1)*2
+          if (off + 1 >= payload.length) break;
+          const v = (typeof window.rcCalNormalizePwm === 'function') ? window.rcCalNormalizePwm(dv.getUint16(off, true)) : dv.getUint16(off, true);
+          if (v !== null && Number.isFinite(Number(v))) {
+            channels[String(i)] = Number(v);
+            sources[String(i)] = 'RC_CHANNELS';
+          }
+        }
+        rssi = Number(payload[41]);
+      } else {
+        return null;
+      }
+      return { msgId, channels, sources, rssi };
+    } catch (e) {
+      console.error('parseRcFrameDetailed failed', e);
+      return null;
+    }
+  }
+
+  const prevHandle = window.handleRcChannelsFrame;
+  window.handleRcChannelsFrame = function(frame){
+    let result;
+    if (typeof prevHandle === 'function') result = prevHandle.apply(this, arguments);
+    try {
+      const parsed = parseRcFrameDetailed(frame);
+      if (!parsed) return result;
+      const live = ensureLive();
+      const now = Date.now();
+      Object.entries(parsed.channels).forEach(([ch, v]) => {
+        const prev = num(live.channels[ch]);
+        live.channelChanged[ch] = Number.isFinite(prev) ? (Math.round(prev) !== Math.round(v)) : false;
+        live.channels[ch] = Number(v);
+        live.channelTs[ch] = now;
+        live.channelSource[ch] = parsed.sources[ch] || 'UNKNOWN';
+        live.channelSourceTs[ch] = now;
+        live.channelLastMsgId[ch] = parsed.msgId;
+      });
+      live.rssi = (Number.isFinite(parsed.rssi) && parsed.rssi >= 0 && parsed.rssi <= 254) ? parsed.rssi : live.rssi;
+      live.lastTs = now;
+      live.lastMsgId = parsed.msgId;
+      if (window.agentState && window.agentState.rccal) {
+        const st = window.agentState.rccal;
+        st.mins = st.mins || {};
+        st.maxs = st.maxs || {};
+        st.trims = st.trims || {};
+        for (const [ch, v] of Object.entries(parsed.channels)) {
+          if (st.captureExtremes) {
+            if (!Number.isFinite(Number(st.mins[ch])) || Number(v) < Number(st.mins[ch])) st.mins[ch] = Number(v);
+            if (!Number.isFinite(Number(st.maxs[ch])) || Number(v) > Number(st.maxs[ch])) st.maxs[ch] = Number(v);
+          }
+          if (st.captureTrim) st.trims[ch] = Number(v);
+        }
+      }
+    } catch (e) {
+      console.error('rcwiz-16n source fix failed', e);
+    }
+    try { if (typeof window.updateRcCalUi === 'function') window.updateRcCalUi(); } catch (e) {}
+    return result;
+  };
+
+  function channelCount(){
+    const live = ensureLive();
+    const keys = Object.keys(live.channels || {}).map(k => Number(k)).filter(Number.isFinite);
+    const mx = keys.length ? Math.max.apply(null, keys) : 16;
+    return Math.max(16, Math.min(RC_MAX_CH, mx));
+  }
+  function ageMs(ch){
+    const live = ensureLive();
+    const ts = Number((live.channelTs || {})[String(ch)] || 0);
+    return ts ? (Date.now() - ts) : Infinity;
+  }
+  function ageText(ms){
+    if (!Number.isFinite(ms)) return '—';
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    return `${(Math.round(ms / 10) / 100).toFixed(2)}s`;
+  }
+  function stateClass(ms, hasVal){
+    if (!hasVal || !Number.isFinite(ms)) return 'dead';
+    if (ms < 300) return 'live';
+    if (ms < 1500) return 'stale';
+    return 'dead';
+  }
+  function stateText(cls){
+    if (cls === 'live') return 'LIVE';
+    if (cls === 'stale') return 'STALE';
+    return 'NO DATA';
+  }
+  function rebuildDebugPanel(){
+    if (!body) return;
+    const live = ensureLive();
+    let rows = '';
+    const count = channelCount();
+    for (let ch = 1; ch <= count; ch++) {
+      const key = String(ch);
+      const rawVal = num((live.channels || {})[key]);
+      const hasVal = Number.isFinite(rawVal);
+      const ms = ageMs(ch);
+      const cls = stateClass(ms, hasVal);
+      const source = (live.channelSource && live.channelSource[key]) ? live.channelSource[key] : '—';
+      const changing = (live.channelChanged && live.channelChanged[key]) ? 'YES' : 'NO';
+      rows += `<tr><td>CH${String(ch).padStart(2,'0')}</td><td>${hasVal ? Math.round(rawVal) : '—'}</td><td>${ageText(ms)}</td><td>${source}</td><td class="rcdebug-${changing === 'YES' ? 'yes' : 'no'}">${changing}</td><td class="rcdebug-${cls}">${stateText(cls)}</td></tr>`;
+    }
+    body.innerHTML = rows;
+    if (lastMsg) lastMsg.textContent = (live.lastMsgId || live.lastMsgId === 0) ? String(live.lastMsgId) : '—';
+    if (req) req.textContent = `${Number(live.requestCount || 0)} @ ${Number(live.lastStreamRateHz || 0)}Hz`;
+  }
+
+  const prevUpdate = window.updateRcCalUi;
+  window.updateRcCalUi = function(){
+    const result = (typeof prevUpdate === 'function') ? prevUpdate.apply(this, arguments) : undefined;
+    try { rebuildDebugPanel(); } catch (e) { console.error('rebuildDebugPanel after update failed', e); }
+    return result;
+  };
+  const prevRender = window.renderRcCalWizard;
+  window.renderRcCalWizard = function(area){
+    const result = (typeof prevRender === 'function') ? prevRender.apply(this, arguments) : undefined;
+    try { rebuildDebugPanel(); } catch (e) { console.error('rebuildDebugPanel after render failed', e); }
+    return result;
+  };
+})();
+</script>
+
+
+<script id="rcwiz-16p-source-priority-fix">
+(function(){
+  const RC_MAX_CH = 18;
+  const SOURCE_FRESH_MS = 4000;
+  function num(v){ v = Number(v); return Number.isFinite(v) ? v : null; }
+  function ensureLive(){
+    const live = window.__rcCalLive = window.__rcCalLive || {};
+    live.channels = live.channels || {};
+    live.channelTs = live.channelTs || {};
+    live.channelSource = live.channelSource || {};
+    live.channelChanged = live.channelChanged || {};
+    live.lastPreferred = live.lastPreferred || {};
+    live.rawChannels = live.rawChannels || {};
+    live.rawChannelTs = live.rawChannelTs || {};
+    live.rawChannelSource = live.rawChannelSource || {};
+    live.aggChannels = live.aggChannels || {};
+    live.aggChannelTs = live.aggChannelTs || {};
+    return live;
+  }
+  function parseFrame(frame){
+    try {
+      if (!frame || !frame.payload) return null;
+      const msgId = Number(frame.msgId);
+      const payload = frame.payload;
+      const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+      const out = {};
+      let rssi = null;
+      if (msgId === 35 && payload.length >= 22) {
+        const port = Number(payload[20] || 0);
+        const base = port * 8;
+        for (let i = 1; i <= 8; i++) {
+          const ch = base + i;
+          if (ch > RC_MAX_CH) break;
+          const off = 4 + ((i - 1) * 2);
+          const v = (typeof window.rcCalNormalizePwm === 'function') ? window.rcCalNormalizePwm(dv.getUint16(off, true)) : dv.getUint16(off, true);
+          if (v !== null && Number.isFinite(Number(v))) out[String(ch)] = { value:Number(v), source:`RC_CHANNELS_RAW p${port}` };
+        }
+        rssi = Number(payload[21]);
+      } else if (msgId === 65 && payload.length >= 42) {
+        // RC_CHANNELS (65): chancount at byte 40, chan_i at 4+(i-1)*2
+        const count = Number(payload[40] || 0);
+        const n = Math.max(8, Math.min(RC_MAX_CH, count > 0 ? count : RC_MAX_CH));
+        for (let i = 1; i <= n; i++) {
+          const off = 4 + ((i - 1) * 2);   // FIX: was 5 + (i-1)*2
+          if (off + 1 >= payload.length) break;
+          const v = (typeof window.rcCalNormalizePwm === 'function') ? window.rcCalNormalizePwm(dv.getUint16(off, true)) : dv.getUint16(off, true);
+          if (v !== null && Number.isFinite(Number(v))) out[String(i)] = { value:Number(v), source:'RC_CHANNELS' };
+        }
+        rssi = Number(payload[41]);
+      } else {
+        return null;
+      }
+      return { msgId, channels: out, rssi };
+    } catch (e) {
+      console.error('rcwiz-16p parseFrame failed', e);
+      return null;
+    }
+  }
+  function choosePreferred(live, ch, now){
+    const key = String(ch);
+    const rawTs = Number((live.rawChannelTs || {})[key] || 0);
+    const aggTs = Number((live.aggChannelTs || {})[key] || 0);
+    const rawVal = num((live.rawChannels || {})[key]);
+    const aggVal = num((live.aggChannels || {})[key]);
+    const rawFresh = Number.isFinite(rawVal) && rawTs && (now - rawTs) <= SOURCE_FRESH_MS;
+    const aggFresh = Number.isFinite(aggVal) && aggTs && (now - aggTs) <= SOURCE_FRESH_MS;
+    if (rawFresh) {
+      return { value: rawVal, source: (live.rawChannelSource && live.rawChannelSource[key]) ? live.rawChannelSource[key] : 'RC_CHANNELS_RAW', ts: rawTs };
+    }
+    if (aggFresh) {
+      return { value: aggVal, source: 'RC_CHANNELS', ts: aggTs };
+    }
+    if (rawTs >= aggTs && Number.isFinite(rawVal)) {
+      return { value: rawVal, source: (live.rawChannelSource && live.rawChannelSource[key]) ? live.rawChannelSource[key] : 'RC_CHANNELS_RAW', ts: rawTs };
+    }
+    if (aggTs > 0 && Number.isFinite(aggVal)) {
+      return { value: aggVal, source: 'RC_CHANNELS', ts: aggTs };
+    }
+    return null;
+  }
+  function recomputePreferred(live, now){
+    for (let ch = 1; ch <= RC_MAX_CH; ch++) {
+      const key = String(ch);
+      const pref = choosePreferred(live, key, now);
+      if (!pref) continue;
+      const prev = num((live.lastPreferred || {})[key]);
+      live.channelChanged[key] = Number.isFinite(prev) ? (Math.round(prev) !== Math.round(pref.value)) : false;
+      live.lastPreferred[key] = pref.value;
+      live.channels[key] = pref.value;
+      live.channelTs[key] = pref.ts;
+      live.channelSource[key] = pref.source;
+    }
+  }
+  function updateCaptureFromPreferred(live){
+    try {
+      if (!(window.agentState && window.agentState.rccal)) return;
+      const st = window.agentState.rccal;
+      st.mins = st.mins || {};
+      st.maxs = st.maxs || {};
+      st.trims = st.trims || {};
+      Object.entries(live.channels || {}).forEach(([key, raw]) => {
+        const v = num(raw);
+        if (!Number.isFinite(v)) return;
+        if (st.captureExtremes) {
+          if (!Number.isFinite(Number(st.mins[key])) || v < Number(st.mins[key])) st.mins[key] = v;
+          if (!Number.isFinite(Number(st.maxs[key])) || v > Number(st.maxs[key])) st.maxs[key] = v;
+        }
+        if (st.captureTrim) st.trims[key] = v;
+      });
+    } catch (e) { console.error('rcwiz-16p updateCaptureFromPreferred failed', e); }
+  }
+  function rebuildDebugPanel(){
+    if (!body) return;
+    const live = ensureLive();
+    const now = Date.now();
+    recomputePreferred(live, now);
+    let rows = '';
+    for (let ch = 1; ch <= RC_MAX_CH; ch++) {
+      const key = String(ch);
+      const v = num((live.channels || {})[key]);
+      const ts = Number((live.channelTs || {})[key] || 0);
+      const age = ts ? (now - ts) : Infinity;
+      const ageText = !Number.isFinite(age) ? '—' : (age < 1000 ? `${Math.round(age)}ms` : `${(Math.round(age/10)/100).toFixed(2)}s`);
+      const source = (live.channelSource && live.channelSource[key]) ? live.channelSource[key] : '—';
+      const changed = (live.channelChanged && live.channelChanged[key]) ? 'YES' : 'NO';
+      let state = 'dead';
+      if (Number.isFinite(v) && Number.isFinite(age)) state = age < 300 ? 'live' : (age < 1500 ? 'stale' : 'dead');
+      const stateText = state === 'live' ? 'LIVE' : (state === 'stale' ? 'STALE' : 'NO DATA');
+      rows += `<tr><td>CH${String(ch).padStart(2,'0')}</td><td>${Number.isFinite(v) ? Math.round(v) : '—'}</td><td>${ageText}</td><td>${source}</td><td class="rcdebug-${changed === 'YES' ? 'yes' : 'no'}">${changed}</td><td class="rcdebug-${state}">${stateText}</td></tr>`;
+    }
+    body.innerHTML = rows;
+    if (lastMsg) lastMsg.textContent = (live.lastMsgId || live.lastMsgId === 0) ? String(live.lastMsgId) : '—';
+    if (req) req.textContent = `${Number(live.requestCount || 0)} @ ${Number(live.lastStreamRateHz || 0)}Hz`;
+  }
+
+  const prevHandle = window.handleRcChannelsFrame;
+  window.handleRcChannelsFrame = function(frame){
+    let result;
+    if (typeof prevHandle === 'function') result = prevHandle.apply(this, arguments);
+    try {
+      const parsed = parseFrame(frame);
+      if (!parsed) return result;
+      const live = ensureLive();
+      const now = Date.now();
+      live.lastMsgId = parsed.msgId;
+      Object.entries(parsed.channels).forEach(([key, info]) => {
+        if (parsed.msgId === 35) {
+          live.rawChannels[key] = info.value;
+          live.rawChannelTs[key] = now;
+          live.rawChannelSource[key] = info.source;
+        } else if (parsed.msgId === 65) {
+          live.aggChannels[key] = info.value;
+          live.aggChannelTs[key] = now;
+        }
+      });
+      if (Number.isFinite(parsed.rssi) && parsed.rssi >= 0 && parsed.rssi <= 254) live.rssi = parsed.rssi;
+      live.lastTs = now;
+      recomputePreferred(live, now);
+      updateCaptureFromPreferred(live);
+    } catch (e) {
+      console.error('rcwiz-16p handleRcChannelsFrame failed', e);
+    }
+    try { if (typeof window.updateRcCalUi === 'function') window.updateRcCalUi(); } catch (e) {}
+    return result;
+  };
+
+  const prevUpdate = window.updateRcCalUi;
+  window.updateRcCalUi = function(){
+    const result = (typeof prevUpdate === 'function') ? prevUpdate.apply(this, arguments) : undefined;
+    try { rebuildDebugPanel(); } catch (e) { console.error('rcwiz-16p rebuild after update failed', e); }
+    return result;
+  };
+  const prevRender = window.renderRcCalWizard;
+  window.renderRcCalWizard = function(area){
+    const result = (typeof prevRender === 'function') ? prevRender.apply(this, arguments) : undefined;
+    try { rebuildDebugPanel(); } catch (e) { console.error('rcwiz-16p rebuild after render failed', e); }
+    return result;
+  };
+})();
+</script>
+
 </body>
 </html>
+
+
+
 
