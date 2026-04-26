@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ArduPilot Web Configurator v0.1.50.0</title>
+<title>ArduPilot Web Configurator v0.1.53.0</title>
 <style>
   :root {
     --bg: #0d0f14;
@@ -1277,6 +1277,46 @@
 .msg-row.sev-debug .msg-sev{ border-color: rgba(255,255,255,0.10); background: rgba(255,255,255,0.03); color: var(--text3); }
 
 
+
+/* =============================
+   COMPASS CALIBRATION WIZARD
+   ============================= */
+.magwiz-wrap{display:flex;flex-direction:column;gap:12px;}
+.magwiz-scroll-shell{padding:16px 24px 24px;overflow:auto;min-height:0;}
+.magwiz-scroll-shell::-webkit-scrollbar{width:6px;}
+.magwiz-scroll-shell::-webkit-scrollbar-thumb{background: var(--border2); border-radius:3px;}
+.magwiz-intro{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:12px;}
+.magwiz-intro h3{font-size:13px;font-weight:900;color:var(--text);margin-bottom:6px;}
+.magwiz-intro p{font-size:12px;color:var(--text2);line-height:1.6;}
+.magwiz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;}
+.magwiz-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:12px;}
+.magwiz-card .k{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
+.magwiz-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.magwiz-row .field{display:flex;flex-direction:column;gap:4px;min-width:160px;}
+.magwiz-row label{font-size:11px;color:var(--text3);}
+.magwiz-row input,.magwiz-row select{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px;font-size:12px;outline:none;}
+.magwiz-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.magwiz-progress{height:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:999px;overflow:hidden;}
+.magwiz-progress > div{height:100%;background:linear-gradient(90deg, rgba(96,165,250,0.95), rgba(52,211,153,0.95));width:0%;transition:width 160ms ease;}
+.magwiz-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px;}
+.magwiz-metric{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px;}
+.magwiz-metric .mkey{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;}
+.magwiz-metric .mval{font-size:13px;color:var(--text);margin-top:4px;font-family:var(--mono);}
+.magwiz-note{font-size:12px;color:var(--text2);line-height:1.6;}
+.magwiz-warn{border:1px solid rgba(251,191,36,0.35);background:rgba(251,191,36,0.10);color:var(--text2);border-radius:12px;padding:10px;}
+.magwiz-ok{border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.10);color:var(--text2);border-radius:12px;padding:10px;}
+.magwiz-table-card{scroll-margin-top:12px;}
+.magwiz-table-wrap{margin-top:10px;overflow:auto;max-height:min(46vh,520px);border:1px solid rgba(255,255,255,0.10);border-radius:12px;background:rgba(255,255,255,0.02);}
+.magwiz-table-wrap::-webkit-scrollbar{width:6px;height:6px;}
+.magwiz-table-wrap::-webkit-scrollbar-thumb{background: var(--border2); border-radius:3px;}
+.magwiz-table{width:100%;border-collapse:collapse;font-size:12px;}
+.magwiz-table th,.magwiz-table td{padding:10px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.08);}
+.magwiz-table th{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;background:rgba(255,255,255,0.03);}
+.magwiz-table td{color:var(--text);}
+.magwiz-table tr:last-child td{border-bottom:none;}
+.magwiz-actions-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px;}
+
+
 /* =============================
    RC RADIO CALIBRATION WIZARD
    ============================= */
@@ -1328,7 +1368,7 @@
 <div class="topbar" id="topbar">
   <div class="logo">
     <a href="javascript:safeReload();"><div class="logo-icon">✈</div></a>
-    ArduPilot Web Configurator v0.1.50.0
+    ArduPilot Web Configurator v0.1.53.0
   </div>
   <div class="topbar-spacer"></div>
   <div id="statusPill" class="status-pill empty">
@@ -4245,6 +4285,8 @@ class MavlinkCodec {
       66: 148,  // REQUEST_DATA_STREAM
       76: 152,  // COMMAND_LONG
       77: 143,  // COMMAND_ACK
+      191: 92,  // MAG_CAL_PROGRESS
+      192: 36,  // MAG_CAL_REPORT
       253: 83,  // STATUSTEXT
 };
   }
@@ -4526,6 +4568,7 @@ class ArduPilotParamClient {
       try { if (m && m.msgId === 22) this._handleParamValue(m.payload); } catch(_) {}
       try { if (m && m.msgId === 30) handleAttitudeFrame(m); } catch(_) {}
       try { if (m && (m.msgId === 35 || m.msgId === 65)) handleRcChannelsFrame(m); } catch(_) {}
+      try { if (m && (m.msgId === 191 || m.msgId === 192)) handleMagCalFrame(m); } catch(_) {}
     };
   }
 
@@ -5155,7 +5198,8 @@ const AGENTS = [
   { id: 'airframe', icon: '🧩', title: 'Airframe Mapping Wizard', subtitle: 'Plane/Copter output mapping' },
   { id: 'levelhorizon', icon: '🟦', title: 'Level Horizon Wizard', subtitle: 'Calibrate FC level attitude' },
   { id: 'accelcal', icon: '🧭', title: 'Accelerometer Calibration', subtitle: '6‑orientation accel calibration' },
-  { id: 'rccal', icon: '📡', title: 'Radio Calibration Wizard', subtitle: 'RC calibration' }
+    { id: 'magcal', icon: '🧭', title: 'Compass Calibration Wizard', subtitle: 'Mag (compass) calibration' },
+{ id: 'rccal', icon: '📡', title: 'Radio Calibration Wizard', subtitle: 'RC calibration' }
 ];
 
 const VTOL_TYPES = [
@@ -5295,14 +5339,18 @@ function renderAgents(area){
     renderAccelCalWizard(area);
     return;
   }
+  if (agentState.selected === 'magcal') {
+    renderCompassCalWizard(area);
+    return;
+  }
   if (agentState.selected === 'rccal') {
     renderRcCalWizard(area);
     return;
   }
 }
 
-function openAgent(id){ try { stopLevelHorizonMonitor(); } catch(_) {} try { rcCalStopMonitoring(); } catch(_) {} agentState.selected = id; if (id==='vtol') agentState.stepIndex = 0; if (id==='levelhorizon') agentState.levelHorizon = { stepIndex: 0, completed: false, lastAck: null, toleranceDeg: 5.0, monitorTimer: null }; if (id==='accelcal') agentState.accel = { active:false, completed:false, stepIndex:0, done:{}, lastSendTs:0 }; if (id==='rccal') agentState.rccal = { stepIndex:0, active:false, captureExtremes:false, captureTrim:false, mins:{}, maxs:{}, trims:{}, reversed:{} }; renderAgents(document.getElementById('contentArea')); }
-function closeAgent(){ try { stopLevelHorizonMonitor(); } catch(_) {} try { rcCalStopMonitoring(); } catch(_) {} agentState.selected = null; renderAgents(document.getElementById('contentArea')); }
+function openAgent(id){ try { stopLevelHorizonMonitor(); } catch(_) {} try { rcCalStopMonitoring(); } catch(_) {} try { magCalStopMonitoring(); } catch(_) {} agentState.selected = id; if (id==='vtol') agentState.stepIndex = 0; if (id==='levelhorizon') agentState.levelHorizon = { stepIndex: 0, completed: false, lastAck: null, toleranceDeg: 5.0, monitorTimer: null }; if (id==='accelcal') agentState.accel = { active:false, completed:false, stepIndex:0, done:{}, lastSendTs:0 }; if (id==='magcal') agentState.magcal = { active:false, started:false, completed:false, accepted:false, mask:0, retry:1, delay:0, lastProgress:null, lastReport:null, lastProgressTs:0, lastReportTs:0, lastAck:null, acceptAck:null, cancelAck:null }; if (id==='rccal') agentState.rccal = { stepIndex:0, active:false, captureExtremes:false, captureTrim:false, mins:{}, maxs:{}, trims:{}, reversed:{} }; renderAgents(document.getElementById('contentArea')); }
+function closeAgent(){ try { stopLevelHorizonMonitor(); } catch(_) {} try { rcCalStopMonitoring(); } catch(_) {} try { magCalStopMonitoring(); } catch(_) {} agentState.selected = null; renderAgents(document.getElementById('contentArea')); }
 
 
 
@@ -8843,10 +8891,632 @@ document.addEventListener('keydown', e => {
     return result;
   };
 })();
+
+
+// ============================================================
+// COMPASS (MAG) CALIBRATION WIZARD
+// ============================================================
+function magCalDefaultState(){
+  return {
+    active: false,
+    started: false,
+    completed: false,
+    accepted: false,
+    applying: false,
+    mask: 0,
+    retry: 1,
+    delay: 0,
+    lastProgress: null,
+    lastReport: null,
+    lastProgressTs: 0,
+    lastReportTs: 0,
+    lastAck: null,
+    acceptAck: null,
+    cancelAck: null,
+    progressByCompass: {},
+    reportByCompass: {},
+    proposedChanges: [],
+    lastAppliedChanges: [],
+    pendingScrollToTable: false,
+    shellScrollTop: 0,
+    tableScrollTop: 0
+  };
+}
+
+function magCalEnsureState(){
+  const defaults = magCalDefaultState();
+  if (!agentState.magcal) {
+    agentState.magcal = defaults;
+    return agentState.magcal;
+  }
+  const s = agentState.magcal;
+  Object.keys(defaults).forEach((key) => {
+    const def = defaults[key];
+    if (Array.isArray(def)) {
+      if (!Array.isArray(s[key])) s[key] = [];
+      return;
+    }
+    if (def && typeof def === 'object') {
+      if (!s[key] || typeof s[key] !== 'object' || Array.isArray(s[key])) s[key] = {};
+      return;
+    }
+    if (s[key] === undefined) s[key] = def;
+  });
+  return s;
+}
+
+function magCalPrepareForCalibration({ keepSettings = true } = {}){
+  const prev = magCalEnsureState();
+  const next = magCalDefaultState();
+  if (keepSettings) {
+    next.mask = Number.isFinite(Number(prev.mask)) ? Number(prev.mask) : 0;
+    next.retry = prev.retry ? 1 : 0;
+    next.delay = Number.isFinite(Number(prev.delay)) ? Number(prev.delay) : 0;
+  }
+  agentState.magcal = next;
+  return next;
+}
+
+function magCalStopMonitoring(){
+  try { if (agentState && agentState.magcal) agentState.magcal.active = false; } catch(_) {}
+}
+function magCalReset(){
+  magCalPrepareForCalibration({ keepSettings: false });
+  renderCompassCalWizard(document.getElementById('contentArea'));
+}
+function magCalUiRerender(){
+  try { if (agentState && agentState.selected==='magcal') renderCompassCalWizard(document.getElementById('contentArea')); } catch(_) {}
+}
+
+function magCalStatusName(code){
+  const names = {
+    0: 'Not Started',
+    1: 'Waiting',
+    2: 'Running Step 1',
+    3: 'Running Step 2',
+    4: 'Success',
+    5: 'Failed',
+    6: 'Bad Orientation',
+    7: 'Bad Radius'
+  };
+  return names[Number(code)] || `Status ${code}`;
+}
+
+function magCalCompassSuffix(compassId){
+  const n = Number(compassId);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return String(Math.round(n) + 1);
+}
+
+function magCalSortedValues(mapLike){
+  return Object.keys(mapLike || {})
+    .map((key) => mapLike[key])
+    .filter(Boolean)
+    .sort((a, b) => Number(a.compass_id || 0) - Number(b.compass_id || 0));
+}
+
+function magCalGetExistingParamValue(name){
+  if (paramClient && paramClient.paramMap && paramClient.paramMap.has(name)) {
+    const known = paramClient.paramMap.get(name);
+    return known ? known.value : null;
+  }
+  if (typeof currentParams !== 'undefined' && currentParams && Object.prototype.hasOwnProperty.call(currentParams, name)) {
+    return currentParams[name];
+  }
+  return null;
+}
+
+function magCalFormatValue(value, paramType = 9){
+  if (value === null || value === undefined || value === '') return '—';
+  const num = Number(value);
+  if (!Number.isFinite(num)) return String(value);
+  if (Number(paramType) !== 9) return String(Math.round(num));
+  if (Math.abs(num - Math.round(num)) < 1e-6) return String(Math.round(num));
+  return num.toFixed(Math.abs(num) >= 100 ? 2 : 6).replace(/\.?0+$/, '');
+}
+
+function magCalNormalizeWriteValue(value, paramType = 9){
+  const num = Number(value);
+  if (!Number.isFinite(num)) return num;
+  return Number(paramType) === 9 ? num : Math.round(num);
+}
+
+function magCalValuesDiffer(previousValue, newValue, paramType = 9){
+  const prevNum = Number(previousValue);
+  const nextNum = Number(newValue);
+  if (Number.isFinite(prevNum) && Number.isFinite(nextNum)) {
+    if (Number(paramType) !== 9) return Math.round(prevNum) !== Math.round(nextNum);
+    return Math.abs(prevNum - nextNum) > 1e-6;
+  }
+  return String(previousValue ?? '') !== String(newValue ?? '');
+}
+
+function magCalStageParamChange(out, compassId, name, newValue, fallbackType = 9){
+  const known = paramClient && paramClient.paramMap ? paramClient.paramMap.get(name) : null;
+  const paramType = known && known.type != null ? known.type : fallbackType;
+  const desiredValue = magCalNormalizeWriteValue(newValue, paramType);
+  if (!Number.isFinite(desiredValue)) return;
+
+  const previousValue = magCalGetExistingParamValue(name);
+  if (!magCalValuesDiffer(previousValue, desiredValue, paramType)) return;
+
+  out.push({
+    compassId: Number(compassId),
+    name,
+    previousValue: previousValue == null ? '—' : String(previousValue),
+    newValue: desiredValue,
+    newDisplay: magCalFormatValue(desiredValue, paramType),
+    type: paramType
+  });
+}
+
+function magCalBuildProposedChanges(){
+  const s = magCalEnsureState();
+  const reports = magCalSortedValues(s.reportByCompass);
+  const changes = [];
+
+  reports.forEach((report) => {
+    if (!report || Number(report.cal_status) !== 4) return;
+
+    const suffix = magCalCompassSuffix(report.compass_id);
+    const ofsBase = `COMPASS_OFS${suffix}`;
+    const diaBase = `COMPASS_DIA${suffix}`;
+    const odiBase = `COMPASS_ODI${suffix}`;
+
+    magCalStageParamChange(changes, report.compass_id, `${ofsBase}_X`, report.ofs_x, 9);
+    magCalStageParamChange(changes, report.compass_id, `${ofsBase}_Y`, report.ofs_y, 9);
+    magCalStageParamChange(changes, report.compass_id, `${ofsBase}_Z`, report.ofs_z, 9);
+    magCalStageParamChange(changes, report.compass_id, `${diaBase}_X`, report.diag_x, 9);
+    magCalStageParamChange(changes, report.compass_id, `${diaBase}_Y`, report.diag_y, 9);
+    magCalStageParamChange(changes, report.compass_id, `${diaBase}_Z`, report.diag_z, 9);
+    magCalStageParamChange(changes, report.compass_id, `${odiBase}_X`, report.offdiag_x, 9);
+    magCalStageParamChange(changes, report.compass_id, `${odiBase}_Y`, report.offdiag_y, 9);
+    magCalStageParamChange(changes, report.compass_id, `${odiBase}_Z`, report.offdiag_z, 9);
+
+    if (report.scale_factor != null && Number.isFinite(Number(report.scale_factor)) && Number(report.scale_factor) > 0) {
+      magCalStageParamChange(changes, report.compass_id, `COMPASS_SCALE${suffix}`, report.scale_factor, 9);
+    }
+    if (report.new_orientation != null && Number.isFinite(Number(report.new_orientation))) {
+      magCalStageParamChange(changes, report.compass_id, `COMPASS_ORIENT${suffix}`, report.new_orientation, 6);
+    }
+  });
+
+  s.proposedChanges = changes;
+  return changes;
+}
+
+function magCalCaptureScrollPositions(){
+  const s = magCalEnsureState();
+  const shell = document.getElementById('magcalScrollShell');
+  const tableWrap = document.getElementById('magcalParamTableWrap');
+  if (shell) s.shellScrollTop = shell.scrollTop || 0;
+  if (tableWrap) s.tableScrollTop = tableWrap.scrollTop || 0;
+}
+
+function magCalRestoreScrollPositions(){
+  const s = magCalEnsureState();
+  const shell = document.getElementById('magcalScrollShell');
+  const tableWrap = document.getElementById('magcalParamTableWrap');
+  if (!shell) return;
+  requestAnimationFrame(() => {
+    try { shell.scrollTop = Math.max(0, Number(s.shellScrollTop) || 0); } catch(_) {}
+    if (tableWrap) {
+      try { tableWrap.scrollTop = Math.max(0, Number(s.tableScrollTop) || 0); } catch(_) {}
+    }
+  });
+}
+
+function magCalScrollToTableIfNeeded(){
+  const s = magCalEnsureState();
+  if (!s.pendingScrollToTable) return;
+  const shell = document.getElementById('magcalScrollShell');
+  const card = document.getElementById('magcalParamChangesCard');
+  const tableWrap = document.getElementById('magcalParamTableWrap');
+  if (!shell || !card) return;
+  s.pendingScrollToTable = false;
+  requestAnimationFrame(() => {
+    try {
+      shell.scrollTo({
+        top: Math.max(0, card.offsetTop - 12),
+        behavior: 'smooth'
+      });
+    } catch(_) {
+      shell.scrollTop = Math.max(0, card.offsetTop - 12);
+    }
+    if (tableWrap) tableWrap.scrollTop = 0;
+  });
+}
+
+function parseMagCalProgress(frame){
+  if (!frame || !frame.payload || frame.payload.length < 27) return null;
+  const dv = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength);
+  return {
+    direction_x: dv.getFloat32(0, true),
+    direction_y: dv.getFloat32(4, true),
+    direction_z: dv.getFloat32(8, true),
+    compass_id: frame.payload[12],
+    cal_mask: frame.payload[13],
+    cal_status: frame.payload[14],
+    attempt: frame.payload[15],
+    completion_pct: frame.payload[16],
+    completion_mask: Array.from(frame.payload.slice(17, 27))
+  };
+}
+
+function parseMagCalReport(frame){
+  if (!frame || !frame.payload || frame.payload.length < 44) return null;
+  const dv = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength);
+  const len = frame.payload.length;
+  const out = {
+    fitness: dv.getFloat32(0, true),
+    ofs_x: dv.getFloat32(4, true),
+    ofs_y: dv.getFloat32(8, true),
+    ofs_z: dv.getFloat32(12, true),
+    diag_x: dv.getFloat32(16, true),
+    diag_y: dv.getFloat32(20, true),
+    diag_z: dv.getFloat32(24, true),
+    offdiag_x: dv.getFloat32(28, true),
+    offdiag_y: dv.getFloat32(32, true),
+    offdiag_z: dv.getFloat32(36, true),
+    compass_id: null,
+    cal_mask: null,
+    cal_status: null,
+    autosaved: null,
+    orientation_confidence: null,
+    old_orientation: null,
+    new_orientation: null,
+    scale_factor: null,
+    _len: len
+  };
+  out.compass_id = frame.payload[40];
+  out.cal_mask = frame.payload[41];
+  out.cal_status = frame.payload[42];
+  out.autosaved = frame.payload[43];
+  if (len >= 48) out.orientation_confidence = dv.getFloat32(44, true);
+  if (len >= 49) out.old_orientation = frame.payload[48];
+  if (len >= 50) out.new_orientation = frame.payload[49];
+  if (len >= 54) out.scale_factor = dv.getFloat32(50, true);
+  return out;
+}
+
+function handleMagCalFrame(frame){
+  const s = magCalEnsureState();
+  const now = Date.now();
+  try {
+    if (Number(frame.msgId) === 191) {
+      const p = parseMagCalProgress(frame);
+      if (!p) return;
+      s.lastProgress = p;
+      s.lastProgressTs = now;
+      s.progressByCompass[String(p.compass_id)] = p;
+      s.active = true;
+      s.started = true;
+      s.completed = false;
+      magCalUiRerender();
+      return;
+    }
+    if (Number(frame.msgId) === 192) {
+      const r = parseMagCalReport(frame);
+      if (!r) return;
+      const wasCompleted = !!s.completed;
+      s.lastReport = r;
+      s.lastReportTs = now;
+      s.reportByCompass[String(r.compass_id)] = r;
+      const progressCount = Object.keys(s.progressByCompass || {}).length;
+      const reportCount = Object.keys(s.reportByCompass || {}).length;
+      s.completed = !!(reportCount && (!progressCount || reportCount >= progressCount));
+      s.active = !s.completed;
+      s.started = !s.completed;
+      if (s.completed && !wasCompleted) s.pendingScrollToTable = true;
+      s.proposedChanges = magCalBuildProposedChanges();
+      magCalUiRerender();
+      return;
+    }
+  } catch(e) {
+    console.error('handleMagCalFrame failed', e);
+  }
+}
+
+async function magCalStart(){
+  const s = magCalEnsureState();
+  if (!agentIsConnected()) { showToast('Connect to a flight controller first.', true); return; }
+
+  const maskEl = document.getElementById('magcal_mask');
+  const retryEl = document.getElementById('magcal_retry');
+  const delayEl = document.getElementById('magcal_delay');
+  const mask = maskEl ? Number(maskEl.value||0) : 0;
+  const retry = retryEl ? Number(retryEl.value||0) : 0;
+  const delay = delayEl ? Number(delayEl.value||0) : 0;
+  s.mask = (Number.isFinite(mask) ? Math.max(0, Math.min(255, Math.round(mask))) : 0);
+  s.retry = (retry ? 1 : 0);
+  s.delay = (Number.isFinite(delay) ? Math.max(0, Math.min(60, delay)) : 0);
+
+  s.lastProgress = null;
+  s.lastReport = null;
+  s.lastProgressTs = 0;
+  s.lastReportTs = 0;
+  s.lastAck = null;
+  s.acceptAck = null;
+  s.cancelAck = null;
+  s.accepted = false;
+  s.completed = false;
+  s.applying = false;
+  s.started = true;
+  s.active = true;
+  s.progressByCompass = {};
+  s.reportByCompass = {};
+  s.proposedChanges = [];
+  s.lastAppliedChanges = [];
+  magCalUiRerender();
+
+  const ts = (paramClient && paramClient.targetSysId) ? paramClient.targetSysId : 1;
+  const tc = (paramClient && paramClient.targetCompId) ? paramClient.targetCompId : 1;
+
+  showToast('🧭 Starting compass (mag) calibration…', true);
+  // MAV_CMD_DO_START_MAG_CAL (42424): autosave=0, autoreboot=0 to require manual Accept and reboot.
+  await mavSendCommandLong(42424, [s.mask, s.retry, 0, s.delay, 0, 0, 0], ts, tc, 0);
+  const ack = await waitForCommandAck(42424, 2500);
+  s.lastAck = ack || null;
+  if (ack && !['ACCEPTED', 'IN_PROGRESS'].includes(String(ack.resultName))) {
+    s.active = false;
+    s.started = false;
+  }
+  magCalUiRerender();
+}
+
+async function magCalCancel(){
+  const prior = magCalEnsureState();
+  if (!agentIsConnected()) { showToast('Connect to a flight controller first.', true); return; }
+  const mask = prior.mask || 0;
+  const s = magCalPrepareForCalibration();
+  const ts = (paramClient && paramClient.targetSysId) ? paramClient.targetSysId : 1;
+  const tc = (paramClient && paramClient.targetCompId) ? paramClient.targetCompId : 1;
+  magCalUiRerender();
+  showToast('⛔ Canceling compass calibration…', true);
+  await mavSendCommandLong(42426, [mask, 0,0,0,0,0,0], ts, tc, 0);
+  const ack = await waitForCommandAck(42426, 2500);
+  s.cancelAck = ack || null;
+  magCalUiRerender();
+}
+
+async function magCalAccept(){
+  const s = magCalEnsureState();
+  if (!agentIsConnected()) { showToast('Connect to a flight controller first.', true); return; }
+  const changes = (s.proposedChanges && s.proposedChanges.length) ? s.proposedChanges.slice() : magCalBuildProposedChanges().slice();
+  if (!changes.length) { showToast('No compass calibration parameter changes are ready to write.', true); return; }
+
+  s.applying = true;
+  s.accepted = false;
+  s.acceptAck = null;
+  magCalUiRerender();
+
+  showWriteProgress(0, `Writing ${changes.length} compass parameter${changes.length === 1 ? '' : 's'}…`);
+
+  let okCount = 0;
+  let failCount = 0;
+  const clamped = [];
+  const appliedChanges = [];
+
+  for (let i = 0; i < changes.length; i++) {
+    const change = changes[i];
+    showWriteProgress(Math.round(((i + 0.5) / changes.length) * 100), `${i + 1}/${changes.length} • ${change.name}`);
+    const ok = await mavSetParamWithConfirm(change.name, change.newValue, change.type, { retries: 3, timeoutMs: 2500 });
+
+    if (!ok) {
+      failCount++;
+      continue;
+    }
+
+    const fcEntry = paramClient && paramClient.paramMap ? paramClient.paramMap.get(change.name) : null;
+    const fcValue = fcEntry ? fcEntry.value : change.newDisplay;
+    const finalValue = String(fcValue);
+
+    if (typeof currentParams !== 'undefined' && currentParams) currentParams[change.name] = finalValue;
+    if (typeof originalParams !== 'undefined' && originalParams) originalParams[change.name] = finalValue;
+
+    if (magCalValuesDiffer(finalValue, change.newValue, change.type)) clamped.push(change.name);
+
+    appliedChanges.push({ ...change, finalValue });
+    okCount++;
+  }
+
+  hideWriteProgress();
+  s.applying = false;
+  s.lastAppliedChanges = appliedChanges;
+  s.proposedChanges = magCalBuildProposedChanges();
+
+  const detail = `${okCount}/${changes.length} params`;
+  if (failCount === 0) {
+    s.accepted = true;
+    s.acceptAck = { resultName: clamped.length ? 'WRITTEN_WITH_CLAMPING' : 'WRITTEN', detail };
+    if (typeof updateDiffCount === 'function') updateDiffCount();
+    if (typeof updateSaveButtons === 'function') updateSaveButtons();
+    if (failCount === 0 && clamped.length === 0) {
+      showToast(`✓ Wrote ${okCount} compass parameter${okCount === 1 ? '' : 's'} to the flight controller`, true);
+    } else {
+      showToast(`✓ Wrote ${okCount} compass params (${clamped.length} adjusted by the FC)`, true);
+    }
+  } else {
+    s.accepted = false;
+    s.acceptAck = { resultName: okCount > 0 ? 'PARTIAL' : 'FAILED', detail };
+    showToast(okCount > 0 ? `⚠ ${okCount} compass params written, ${failCount} failed to confirm` : '⚠ Compass calibration parameters failed to confirm', false);
+  }
+
+  magCalUiRerender();
+}
+
+function renderCompassCalWizard(area){
+  const s = magCalEnsureState();
+  magCalCaptureScrollPositions();
+  const connected = agentIsConnected();
+  const progressEntries = magCalSortedValues(s.progressByCompass);
+  const reportEntries = magCalSortedValues(s.reportByCompass);
+  const p = s.lastProgress || (progressEntries.length ? progressEntries[progressEntries.length - 1] : null);
+  const r = s.lastReport || (reportEntries.length ? reportEntries[reportEntries.length - 1] : null);
+  const pct = progressEntries.length ? Math.max(0, Math.min(100, Math.min(...progressEntries.map((entry) => Number(entry.completion_pct || 0))))) : 0;
+  const ageP = s.lastProgressTs ? (Date.now() - s.lastProgressTs) : null;
+  const ageR = s.lastReportTs ? (Date.now() - s.lastReportTs) : null;
+  const proposedChanges = magCalBuildProposedChanges();
+  const displayChanges = proposedChanges.length ? proposedChanges : (s.accepted ? s.lastAppliedChanges : []);
+  const canAccept = !!(connected && proposedChanges.length && !s.accepted && !s.applying && !s.active);
+  const settingsLocked = !!(s.active || s.applying);
+  const latestStatus = p ? magCalStatusName(p.cal_status) : '—';
+  const reportStatus = r ? magCalStatusName(r.cal_status) : '—';
+  const startLabel = s.active ? '⏹ Stop Calibration' : '▶ Start Calibration';
+  const startAction = s.active ? 'magCalCancel()' : 'magCalStart()';
+
+  const ackLine = (s.lastAck && s.lastAck.resultName) ? `${s.lastAck.resultName}${(s.lastAck.progress!=null?` · ${s.lastAck.progress}%`:``)}` : '—';
+  const acceptLine = (s.acceptAck && s.acceptAck.resultName) ? `${s.acceptAck.resultName}${s.acceptAck.detail ? ` · ${s.acceptAck.detail}` : ``}` : '—';
+  const cancelLine = (s.cancelAck && s.cancelAck.resultName) ? `${s.cancelAck.resultName}${(s.cancelAck.progress!=null?` · ${s.cancelAck.progress}%`:``)}` : '—';
+  const changeRows = displayChanges.map((change) => `
+              <tr>
+                <td>${change.compassId}</td>
+                <td>${escHtml(change.name)}</td>
+                <td>${escHtml(change.previousValue)}</td>
+                <td>${escHtml(change.newDisplay)}</td>
+              </tr>
+            `).join('');
+
+  area.innerHTML = `
+    <div class="content-header">
+      <div>
+        <h1>🧠 Configuration Agents · 🧭 Compass Calibration</h1>
+        <p>Onboard magnetometer calibration with manual parameter review and writeback</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn" onclick="closeAgent()">← Back</button>
+        <button class="btn" onclick="magCalReset()">↻ Reset</button>
+      </div>
+    </div>
+
+    <div class="magwiz-scroll-shell" id="magcalScrollShell">
+    <div class="magwiz-wrap">
+      <div class="magwiz-intro">
+        <h3>What you’ll do</h3>
+        <p>
+          Start the onboard compass calibration, then rotate the vehicle so each side (front/back/left/right/top/bottom) points down for a few seconds.
+          When the report arrives, review the proposed parameter updates and click <b>Accept Calibration</b> to write them to the flight controller.
+        </p>
+      </div>
+
+      <div class="magwiz-grid">
+        <div class="magwiz-card">
+          <div class="k">Settings</div>
+          <div class="magwiz-row">
+            <div class="field">
+              <label>Magnetometers Bitmask (0 = all)</label>
+              <input id="magcal_mask" type="number" min="0" max="255" step="1" value="${s.mask||0}" ${(connected && !settingsLocked)?'':'disabled'} />
+            </div>
+            <div class="field">
+              <label>Retry on failure</label>
+              <select id="magcal_retry" ${(connected && !settingsLocked)?'':'disabled'}>
+                <option value="0" ${s.retry?``:`selected`}>No</option>
+                <option value="1" ${s.retry?`selected`:``}>Yes</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Start delay (seconds)</label>
+              <input id="magcal_delay" type="number" min="0" max="60" step="0.5" value="${s.delay||0}" ${(connected && !settingsLocked)?'':'disabled'} />
+            </div>
+          </div>
+          <div class="magwiz-note" style="margin-top:10px;">
+            Autosave is intentionally disabled. The wizard stages the reported values and only writes them when you click <b>Accept Calibration</b>.
+          </div>
+        </div>
+
+        <div class="magwiz-card">
+          <div class="k">Controls</div>
+          <div class="magwiz-actions">
+            <button class="btn primary" onclick="${startAction}" ${connected && !s.applying ? '' : 'disabled'}>${startLabel}</button>
+            <button class="btn" onclick="magCalAccept()" ${canAccept?'':'disabled'}>${s.applying ? '⏳ Writing…' : '✅ Accept Calibration'}</button>
+          </div>
+          <div class="magwiz-metrics">
+            <div class="magwiz-metric"><div class="mkey">FC Connection</div><div class="mval">${connected?'Connected':'Not connected'}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Start ACK</div><div class="mval">${ackLine}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Accept Result</div><div class="mval">${acceptLine}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Cancel ACK</div><div class="mval">${cancelLine}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="magwiz-card">
+        <div class="k">Progress</div>
+        <div class="magwiz-progress"><div style="width:${pct}%"></div></div>
+        <div class="magwiz-metrics">
+          <div class="magwiz-metric"><div class="mkey">Completion</div><div class="mval">${progressEntries.length ? (pct+'%') : '—'}</div></div>
+          <div class="magwiz-metric"><div class="mkey">Tracked Compasses</div><div class="mval">${progressEntries.length || '—'}</div></div>
+          <div class="magwiz-metric"><div class="mkey">Compass ID</div><div class="mval">${p ? p.compass_id : '—'}</div></div>
+          <div class="magwiz-metric"><div class="mkey">Cal Mask</div><div class="mval">${p ? p.cal_mask : '—'}</div></div>
+          <div class="magwiz-metric"><div class="mkey">Status</div><div class="mval">${latestStatus}</div></div>
+          <div class="magwiz-metric"><div class="mkey">Attempt</div><div class="mval">${p ? p.attempt : '—'}</div></div>
+          <div class="magwiz-metric"><div class="mkey">Last progress age</div><div class="mval">${ageP==null?'—':(ageP+' ms')}</div></div>
+        </div>
+        ${(!progressEntries.length && s.started) ? `<div class="magwiz-warn" style="margin-top:10px;">No MAG_CAL_PROGRESS received yet. The MAVLink decoder now includes the correct MAG_CAL CRC metadata, so if this still persists check the FC stream and calibration command response.</div>` : ``}
+      </div>
+
+      <div class="magwiz-card">
+        <div class="k">Report (results)</div>
+        ${r ? `
+          <div class="magwiz-metrics">
+            <div class="magwiz-metric"><div class="mkey">Reports Received</div><div class="mval">${reportEntries.length}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Status</div><div class="mval">${reportStatus}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Fitness</div><div class="mval">${Number.isFinite(r.fitness)?r.fitness.toFixed(3):r.fitness}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Offsets (x,y,z)</div><div class="mval">${[r.ofs_x,r.ofs_y,r.ofs_z].map(v=>Number.isFinite(v)?v.toFixed(2):v).join(', ')}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Diag (x,y,z)</div><div class="mval">${[r.diag_x,r.diag_y,r.diag_z].map(v=>Number.isFinite(v)?v.toFixed(3):v).join(', ')}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Offdiag (x,y,z)</div><div class="mval">${[r.offdiag_x,r.offdiag_y,r.offdiag_z].map(v=>Number.isFinite(v)?v.toFixed(3):v).join(', ')}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Orientation</div><div class="mval">${r.new_orientation == null ? '—' : `${r.old_orientation ?? '—'} → ${r.new_orientation}`}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Scale Factor</div><div class="mval">${r.scale_factor == null ? '—' : magCalFormatValue(r.scale_factor, 9)}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Autosaved</div><div class="mval">${r.autosaved}</div></div>
+            <div class="magwiz-metric"><div class="mkey">Report age</div><div class="mval">${ageR==null?'—':(ageR+' ms')}</div></div>
+          </div>
+          ${s.accepted ? `<div class="magwiz-ok" style="margin-top:10px;">Accepted. The reported compass calibration values were written to the flight controller.</div>` : `<div class="magwiz-warn" style="margin-top:10px;">Report received. Review the parameter table below, then click <b>Accept Calibration</b> to write the values.</div>`}
+        ` : `<div class="magwiz-note">No MAG_CAL_REPORT received yet.</div>`}
+      </div>
+
+      <div class="magwiz-card magwiz-table-card" id="magcalParamChangesCard">
+        <div class="k">Parameter Changes</div>
+        ${displayChanges.length ? `
+          <div class="magwiz-note">${proposedChanges.length ? 'These values will be written when you accept the calibration.' : 'These are the values that were written during the last accept action.'}</div>
+          <div class="magwiz-table-wrap" id="magcalParamTableWrap">
+            <table class="magwiz-table">
+              <thead>
+                <tr>
+                  <th>Compass</th>
+                  <th>Parameter</th>
+                  <th>Previous</th>
+                  <th>New</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${changeRows}
+              </tbody>
+            </table>
+          </div>
+          <div class="magwiz-actions-row">
+            <div class="magwiz-note">${proposedChanges.length ? `${proposedChanges.length} parameter change${proposedChanges.length === 1 ? '' : 's'} staged from the MAG_CAL report.` : 'Calibration values already applied.'}</div>
+            <button class="btn success" onclick="magCalAccept()" ${canAccept?'':'disabled'}>${s.applying ? '⏳ Writing…' : '✅ Accept Calibration'}</button>
+          </div>
+        ` : reportEntries.length ? `
+          <div class="magwiz-note">No writable compass parameter changes are currently staged. This usually means the report matches the flight controller’s existing values or the report did not finish with a success status.</div>
+        ` : `
+          <div class="magwiz-note">Parameter changes will appear here after a successful MAG_CAL report is received.</div>
+        `}
+      </div>
+    </div>
+    </div>
+  `;
+  if (s.pendingScrollToTable) {
+    magCalScrollToTableIfNeeded();
+  } else {
+    magCalRestoreScrollPositions();
+  }
+}
+
 </script>
 
 </body>
 </html>
+
 
 
 
