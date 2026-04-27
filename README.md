@@ -10,6 +10,8 @@ A single HTML/JavaScript/CSS file that can be opened directly in Chrome or hoste
 
 <img width="1983" height="1226" alt="Screenshot 2026-04-27 at 7 34 28 PM" src="https://github.com/user-attachments/assets/518c44ed-23ba-441e-9208-2df639f4cf95" />
 
+<img width="1983" height="1226" alt="Screenshot 2026-04-27 at 7 39 03 PM" src="https://github.com/user-attachments/assets/26d139d9-4271-4232-97f2-4db686ef1c63" />
+
 <img width="1983" height="1226" alt="Screenshot 2026-04-27 at 7 34 48 PM" src="https://github.com/user-attachments/assets/8caf51e0-fe9d-4063-87dc-be8dffac46b7" />
 
 <img width="1983" height="1226" alt="Screenshot 2026-04-27 at 7 35 10 PM" src="https://github.com/user-attachments/assets/ad5177ae-4c66-4fe9-a0b6-ce484ecf8a8b" />
