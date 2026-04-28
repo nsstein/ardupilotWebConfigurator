@@ -14,7 +14,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ArduPilot Web Configurator v0.1.55.3</title>
+<title>ArduPilot Web Configurator v0.1.55.5</title>
 <style>
   :root {
 	--bg: #262c38;
@@ -953,8 +953,7 @@
   --cell: 18px;
   width: calc(var(--cols) * var(--cell));
   height: calc(var(--rows) * var(--cell));
-  min-width: 100%;
-  min-height: 100%;
+  margin: 12px;
   background:
     linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
     linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
@@ -1683,7 +1682,7 @@
 <div class="topbar" id="topbar">
   <div class="logo">
     <a href="javascript:safeReload();"><div class="logo-icon">✈</div></a>
-    ArduPilot Web Configurator v0.1.55.3
+    ArduPilot Web Configurator v0.1.55.5
   </div>
   <div class="topbar-spacer"></div>
   <div id="statusPill" class="status-pill empty">
@@ -7184,7 +7183,7 @@ function renderRcCalWizard(area){
                     ? '🟡 Move all sticks, switches and knobs through their <strong>full travel</strong>. Center sticks, then click <strong>Stop Calibration</strong> — mid values are captured at stop.'
                     : (Object.keys(st.trims||{}).length || Object.keys(st.mins||{}).length)
                       ? '✅ Saved values are shown below. Click <strong>Start Calibration</strong> to recapture, or <strong>Apply to Parameters</strong> to stage them for writing.'
-                      : 'Click <strong>Start Calibration</strong> to begin capturing low / mid / high values for each channel.'
+                      : '<strong>Ensure sticks are centered, then click Start Calibration</strong> to begin capturing low / mid / high values for each channel.'
                   }
                 </div>
               </div>
@@ -8320,6 +8319,24 @@ function osdGridFromParams(screen) {
   return { cols: 30, rows: 16 };
 }
 
+function osdNormalize(screen) {
+  // Clamp all enabled element positions to the valid grid for the given screen's current resolution.
+  // Returns the number of elements whose position was actually changed.
+  const gg = osdGridFromParams(screen);
+  const els = osdListElements(screen).filter(e => e.en);
+  let clamped = 0;
+  els.forEach(e => {
+    const nx = Math.max(0, Math.min(gg.cols - 1, e.x));
+    const ny = Math.max(0, Math.min(gg.rows - 1, e.y));
+    if (nx !== e.x || ny !== e.y) {
+      osdSetParam(e.xKey, nx);
+      osdSetParam(e.yKey, ny);
+      clamped++;
+    }
+  });
+  return clamped;
+}
+
 function osdDetectType() {
   // Prefer per-screen TYPE if present, otherwise fall back to global OSD_TYPE
   const per = currentParams[osdState.screen + '_TYPE'];
@@ -8429,7 +8446,6 @@ function renderOSDEditor(area) {
             <option value="1">HD (50 × 18) — DJI / HDZero / Walksnail</option>
             <option value="3">HD+ (60 × 22) — Extended HD</option>
           </select>
-          <button class="btn" id="osdNormalizeBtn" title="Clamp enabled element positions into the valid grid for the current resolution">Normalize</button>
           <span style="flex:1"></span>
           <div class="hint">Cell Size</div>
           <input id="osdCell" type="number" min="12" max="28" style="width:76px" value="${osdState.cell}" title="Cell size (px)" />
@@ -8502,25 +8518,22 @@ function renderOSDEditor(area) {
     txtSel.onchange = () => {
       const v = String(txtSel.value);
       osdSetParam(key, v);
+      // Auto-normalize: clamp element positions to the new resolution's valid grid before re-rendering
+      const clamped = osdNormalize(osdState.screen);
+      if (clamped > 0) showToast(`✓ OSD positions normalized for new resolution (${clamped} element${clamped > 1 ? 's' : ''} moved)`, true);
       renderOSDEditor(document.getElementById('contentArea'));
     };
   }
 
-  // Normalize button
-  const normBtn = document.getElementById('osdNormalizeBtn');
-  if (normBtn) {
-    normBtn.onclick = () => {
-      const gg = osdGridFromParams(osdState.screen);
-      const els = osdListElements(osdState.screen).filter(e => e.en);
-      els.forEach(e => {
-        const nx = Math.max(0, Math.min(gg.cols - 1, e.x));
-        const ny = Math.max(0, Math.min(gg.rows - 1, e.y));
-        osdSetParam(e.xKey, nx);
-        osdSetParam(e.yKey, ny);
-      });
-      showToast('✓ OSD positions normalized for current resolution', true);
-      renderOSDEditor(document.getElementById('contentArea'));
-    };
+  // Sync osdGridScroll and osdStage to the exact valid drag area for the selected resolution.
+  // max-width / max-height cap the scrollable viewport so no dead zone exists beyond the grid.
+  // The +24 accounts for the 12px margin on each side of osdStage so all edges remain visible.
+  const gridScroll = document.getElementById('osdGridScroll');
+  if (gridScroll) {
+    const gw = osdState.cols * osdState.cell;
+    const gh = osdState.rows * osdState.cell;
+    gridScroll.style.maxWidth  = (gw + 24) + 'px';
+    gridScroll.style.maxHeight = (gh + 24) + 'px';
   }
 
   // Cell size control (visual only)
@@ -9075,7 +9088,7 @@ document.addEventListener('keydown', e => {
     panel.className = 'rcwiz-obs';
     panel.innerHTML = [
       '<strong style="color:var(--text);">Buffered RC range tracking enabled</strong>',
-      '<div>This build slows the RC UI to a delayed time scale, maintains full observed low / mid / high points per channel, and stages RCx_MIN / RCx_TRIM / RCx_MAX automatically when you click <strong>Write to FC</strong>.</div>',
+      '<div>Ensure all sticks are centered.  This will allow for the determination of low / mid / high points per channel. RCx_MIN / RCx_TRIM / RCx_MAX are staged to be written to the FC <strong>Write to FC</strong>.</div>',
       '<div class="row">',
       '  <span class="pill good" id="rcwizPatchVer">' + PATCH_VER + '</span>',
       '  <span class="pill" id="rcwizRatePill">RC request rate: 8 Hz</span>',
@@ -10298,18 +10311,6 @@ function renderCompassCalWizard(area){
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
