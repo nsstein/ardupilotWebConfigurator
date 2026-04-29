@@ -13,8 +13,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link href="manifest.json" rel="manifest"/>
+<link href="icon-192.png" rel="icon"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ArduPilot Web Configurator v0.1.55.6</title>
+<title>ArduPilot Web Configurator v0.1.55.8</title>
 <style>
   :root {
 	--bg: #262c38;
@@ -1727,7 +1729,7 @@
 <div class="topbar" id="topbar">
   <div class="logo">
     <a href="javascript:safeReload();"><div class="logo-icon">✈</div></a>
-    ArduPilot Web Configurator v0.1.55.6
+    ArduPilot Web Configurator v0.1.55.8
   </div>
   <div class="topbar-spacer"></div>
   <div id="statusPill" class="status-pill empty">
@@ -1849,7 +1851,7 @@
           <div class="demo-btn" onclick="loadSamplePlane()">✈ <span>Sample Plane</span></div>
           <div class="demo-btn" onclick="loadSampleCopter()">🚁 <span>Sample Copter</span></div>
           <div class="demo-btn" onclick="loadSampleRover()">🚗 <span>Sample Rover</span></div>
-          <div class="demo-btn" onclick="loadSampleVTOL()">🛩 <span>Sample VTOL</span></div>
+          <div class="demo-btn" onclick="loadSampleOSD()">🛩 <span>Sample OSD</span></div>
         </div>
 
         <div class="actions" style="margin-top:10px;">
@@ -2873,18 +2875,55 @@ function parseAndLoad(text, fname) {
     const val = trimmed.substring(commaIdx + 1).trim();
     if (key) params[key] = val;
   }
+  
   if (Object.keys(params).length === 0) {
     showToast('⚠ No parameters found in file', false);
     return;
   }
-  originalParams = JSON.parse(JSON.stringify(params));
-  currentParams = JSON.parse(JSON.stringify(params));
-  currentFile = fname;
-  loadedVehicleHint = inferVehicleFamily(params, fname);
-  refreshVehicleContext(params, fname);
- updateStartHints();
- initUI();
-  showToast('✓ Loaded ' + Object.keys(params).length + ' parameters from ' + fname, true);
+
+  // Check if we are currently connected to a flight controller
+  const isConnected = !!(mav && transport && transport.isOpen);
+
+  if (isConnected) {
+    // We are connected: Treat the loaded file as proposed changes
+    let changeCount = 0;
+    
+    for (const [key, val] of Object.entries(params)) {
+      // Only stage the change if the parameter already exists on the FC 
+      // and differs from the FC's original baseline value.
+      if (originalParams[key] !== undefined && originalParams[key] !== val) {
+        currentParams[key] = val;
+        changeCount++;
+      }
+    }
+    
+    if (changeCount > 0) {
+      showToast(`✓ Loaded ${changeCount} proposed changes from ${fname}`, true);
+      updateDiffCount();
+      updateSaveButtons();
+      renderContent();
+      
+      // Automatically open the diff panel so the user can review the staged changes
+      if (!diffOpen) {
+        toggleDiff();
+      } else {
+        renderDiff();
+      }
+    } else {
+      showToast(`ℹ No differing parameters found in ${fname}`, false);
+    }
+    
+  } else {
+    // We are disconnected: Standard file load (overwrite everything)
+    originalParams = JSON.parse(JSON.stringify(params));
+    currentParams = JSON.parse(JSON.stringify(params));
+    currentFile = fname;
+    loadedVehicleHint = inferVehicleFamily(params, fname);
+    refreshVehicleContext(params, fname);
+    updateStartHints();
+    initUI();
+    showToast('✓ Loaded ' + Object.keys(params).length + ' parameters from ' + fname, true);
+  }
 }
 
 function loadSamplePlane() {
@@ -4209,56 +4248,391 @@ SYSID_MYGCS,255`;
   parseAndLoad(sampleText, 'sample_rover.param');
 }
 
-function loadSampleVTOL() {
+function loadSampleOSD() {
  loadedVehicleHint = 'plane';
- const sampleText = `# Sample QuadPlane VTOL
-# Core enable
-Q_ENABLE,1
-Q_FRAME_CLASS,1
-Q_FRAME_TYPE,1
-Q_OPTIONS,0
-
-# Assist / Transition
-Q_ASSIST_SPEED,12
-Q_ASSIST_ANGLE,15
-Q_TRANSITION_MS,3000
-
-# Quad motors (PWM + idle spin)
-Q_M_PWM_MIN,1100
-Q_M_PWM_MAX,1900
-Q_M_SPIN_ARM,0.15
-Q_M_SPIN_MIN,0.18
-Q_M_SPIN_MAX,0.95
-
-# VTOL RTL / Land behaviors
-Q_RTL_MODE,1
-Q_LAND_SPEED,80
-
-# Recommended basics
-ARMING_CHECK,1
-EK3_ENABLE,1
-AHRS_EKF_TYPE,3
-
-# Example flight modes (mix Q + fixed wing)
-FLTMODE_CH,6
-FLTMODE1,17
-FLTMODE2,18
-FLTMODE3,5
-FLTMODE4,6
-FLTMODE5,10
-FLTMODE6,11
-
-# Example output mapping (typical)
-SERVO1_FUNCTION,33
-SERVO2_FUNCTION,34
-SERVO3_FUNCTION,35
-SERVO4_FUNCTION,36
-SERVO5_FUNCTION,70
-SERVO6_FUNCTION,4
-SERVO7_FUNCTION,19
-SERVO8_FUNCTION,21
+ const sampleText = `# Sample OSD
+OSD_TYPE,5
+OSD_CHAN,0
+OSD1_ENABLE,1
+OSD1_CHAN_MIN,900
+OSD1_CHAN_MAX,2100
+OSD1_ALTITUDE_EN,1
+OSD1_ALTITUDE_X,46
+OSD1_ALTITUDE_Y,7
+OSD1_BAT_VOLT_EN,1
+OSD1_BAT_VOLT_X,22
+OSD1_BAT_VOLT_Y,2
+OSD1_RSSI_EN,1
+OSD1_RSSI_X,5
+OSD1_RSSI_Y,2
+OSD1_CURRENT_EN,0
+OSD1_CURRENT_X,25
+OSD1_CURRENT_Y,2
+OSD1_BATUSED_EN,0
+OSD1_BATUSED_X,23
+OSD1_BATUSED_Y,3
+OSD1_SATS_EN,1
+OSD1_SATS_X,35
+OSD1_SATS_Y,2
+OSD1_FLTMODE_EN,1
+OSD1_FLTMODE_X,2
+OSD1_FLTMODE_Y,8
+OSD1_MESSAGE_EN,1
+OSD1_MESSAGE_X,16
+OSD1_MESSAGE_Y,9
+OSD1_GSPEED_EN,1
+OSD1_GSPEED_X,46
+OSD1_GSPEED_Y,9
+OSD1_HORIZON_EN,0
+OSD1_HORIZON_X,19
+OSD1_HORIZON_Y,11
+OSD1_HOME_EN,1
+OSD1_HOME_X,22
+OSD1_HOME_Y,4
+OSD1_HEADING_EN,0
+OSD1_HEADING_X,13
+OSD1_HEADING_Y,2
+OSD1_THROTTLE_EN,1
+OSD1_THROTTLE_X,2
+OSD1_THROTTLE_Y,9
+OSD1_COMPASS_EN,0
+OSD1_COMPASS_X,15
+OSD1_COMPASS_Y,3
+OSD1_WIND_EN,0
+OSD1_WIND_X,2
+OSD1_WIND_Y,12
+OSD1_ASPEED_EN,0
+OSD1_ASPEED_X,2
+OSD1_ASPEED_Y,13
+OSD1_VSPEED_EN,1
+OSD1_VSPEED_X,46
+OSD1_VSPEED_Y,8
+OSD1_ESCTEMP_EN,0
+OSD1_ESCTEMP_X,24
+OSD1_ESCTEMP_Y,13
+OSD1_ESCRPM_EN,0
+OSD1_ESCRPM_X,22
+OSD1_ESCRPM_Y,12
+OSD1_ESCAMPS_EN,0
+OSD1_ESCAMPS_X,24
+OSD1_ESCAMPS_Y,14
+OSD1_GPSLAT_EN,1
+OSD1_GPSLAT_X,2
+OSD1_GPSLAT_Y,12
+OSD1_GPSLONG_EN,1
+OSD1_GPSLONG_X,2
+OSD1_GPSLONG_Y,13
+OSD1_ROLL_EN,0
+OSD1_ROLL_X,0
+OSD1_ROLL_Y,0
+OSD1_PITCH_EN,0
+OSD1_PITCH_X,0
+OSD1_PITCH_Y,0
+OSD1_TEMP_EN,0
+OSD1_TEMP_X,0
+OSD1_TEMP_Y,0
+OSD1_HDOP_EN,1
+OSD1_HDOP_X,43
+OSD1_HDOP_Y,2
+OSD1_WAYPOINT_EN,0
+OSD1_WAYPOINT_X,0
+OSD1_WAYPOINT_Y,0
+OSD1_XTRACK_EN,0
+OSD1_XTRACK_X,0
+OSD1_XTRACK_Y,0
+OSD1_DIST_EN,0
+OSD1_DIST_X,22
+OSD1_DIST_Y,11
+OSD1_STATS_EN,0
+OSD1_STATS_X,0
+OSD1_STATS_Y,0
+OSD1_FLTIME_EN,0
+OSD1_FLTIME_X,23
+OSD1_FLTIME_Y,10
+OSD1_CLIMBEFF_EN,0
+OSD1_CLIMBEFF_X,0
+OSD1_CLIMBEFF_Y,0
+OSD1_EFF_EN,0
+OSD1_EFF_X,22
+OSD1_EFF_Y,10
+OSD1_BTEMP_EN,0
+OSD1_BTEMP_X,0
+OSD1_BTEMP_Y,0
+OSD1_ATEMP_EN,0
+OSD1_ATEMP_X,20
+OSD1_ATEMP_Y,13
+OSD1_BAT2_VLT_EN,0
+OSD1_BAT2_VLT_X,0
+OSD1_BAT2_VLT_Y,0
+OSD1_BAT2USED_EN,0
+OSD1_BAT2USED_X,0
+OSD1_BAT2USED_Y,0
+OSD1_ASPD2_EN,0
+OSD1_ASPD2_X,0
+OSD1_ASPD2_Y,0
+OSD1_ASPD1_EN,0
+OSD1_ASPD1_X,0
+OSD1_ASPD1_Y,0
+OSD1_CLK_EN,0
+OSD1_CLK_X,0
+OSD1_CLK_Y,0
+OSD1_SIDEBARS_EN,0
+OSD1_SIDEBARS_X,4
+OSD1_SIDEBARS_Y,5
+OSD1_CRSSHAIR_EN,0
+OSD1_CRSSHAIR_X,0
+OSD1_CRSSHAIR_Y,0
+OSD1_HOMEDIST_EN,0
+OSD1_HOMEDIST_X,18
+OSD1_HOMEDIST_Y,5
+OSD1_HOMEDIR_EN,0
+OSD1_HOMEDIR_X,7
+OSD1_HOMEDIR_Y,8
+OSD1_POWER_EN,0
+OSD1_POWER_X,15
+OSD1_POWER_Y,9
+OSD1_CELLVOLT_EN,0
+OSD1_CELLVOLT_X,39
+OSD1_CELLVOLT_Y,12
+OSD1_BATTBAR_EN,0
+OSD1_BATTBAR_X,4
+OSD1_BATTBAR_Y,3
+OSD1_ARMING_EN,0
+OSD1_ARMING_X,18
+OSD1_ARMING_Y,13
+OSD1_CURRENT2_EN,0
+OSD1_CURRENT2_X,0
+OSD1_CURRENT2_Y,0
+OSD1_VTX_PWR_EN,0
+OSD1_VTX_PWR_X,0
+OSD1_VTX_PWR_Y,0
+OSD1_AVGCELLV_EN,0
+OSD1_AVGCELLV_X,9
+OSD1_AVGCELLV_Y,9
+OSD1_RESTVOLT_EN,0
+OSD1_RESTVOLT_X,24
+OSD1_RESTVOLT_Y,2
+OSD1_FENCE_EN,0
+OSD1_FENCE_X,14
+OSD1_FENCE_Y,9
+OSD1_RNGF_EN,0
+OSD1_RNGF_X,0
+OSD1_RNGF_Y,0
+OSD1_ACRVOLT_EN,0
+OSD1_ACRVOLT_X,24
+OSD1_ACRVOLT_Y,4
+OSD2_ENABLE,1
+OSD2_CHAN_MIN,900
+OSD2_CHAN_MAX,2100
+OSD2_ALTITUDE_EN,0
+OSD2_ALTITUDE_X,23
+OSD2_ALTITUDE_Y,8
+OSD2_BAT_VOLT_EN,1
+OSD2_BAT_VOLT_X,13
+OSD2_BAT_VOLT_Y,1
+OSD2_RSSI_EN,0
+OSD2_RSSI_X,1
+OSD2_RSSI_Y,1
+OSD2_CURRENT_EN,0
+OSD2_CURRENT_X,25
+OSD2_CURRENT_Y,2
+OSD2_BATUSED_EN,0
+OSD2_BATUSED_X,23
+OSD2_BATUSED_Y,3
+OSD2_SATS_EN,0
+OSD2_SATS_X,1
+OSD2_SATS_Y,3
+OSD2_FLTMODE_EN,0
+OSD2_FLTMODE_X,2
+OSD2_FLTMODE_Y,8
+OSD2_MESSAGE_EN,0
+OSD2_MESSAGE_X,2
+OSD2_MESSAGE_Y,6
+OSD2_GSPEED_EN,0
+OSD2_GSPEED_X,2
+OSD2_GSPEED_Y,14
+OSD2_HORIZON_EN,0
+OSD2_HORIZON_X,14
+OSD2_HORIZON_Y,8
+OSD2_HOME_EN,1
+OSD2_HOME_X,13
+OSD2_HOME_Y,2
+OSD2_HEADING_EN,0
+OSD2_HEADING_X,13
+OSD2_HEADING_Y,2
+OSD2_THROTTLE_EN,0
+OSD2_THROTTLE_X,24
+OSD2_THROTTLE_Y,11
+OSD2_COMPASS_EN,0
+OSD2_COMPASS_X,15
+OSD2_COMPASS_Y,3
+OSD2_WIND_EN,0
+OSD2_WIND_X,2
+OSD2_WIND_Y,12
+OSD2_ASPEED_EN,0
+OSD2_ASPEED_X,2
+OSD2_ASPEED_Y,13
+OSD2_VSPEED_EN,0
+OSD2_VSPEED_X,24
+OSD2_VSPEED_Y,9
+OSD2_ESCTEMP_EN,0
+OSD2_ESCTEMP_X,24
+OSD2_ESCTEMP_Y,13
+OSD2_ESCRPM_EN,0
+OSD2_ESCRPM_X,22
+OSD2_ESCRPM_Y,12
+OSD2_ESCAMPS_EN,0
+OSD2_ESCAMPS_X,24
+OSD2_ESCAMPS_Y,14
+OSD2_GPSLAT_EN,0
+OSD2_GPSLAT_X,9
+OSD2_GPSLAT_Y,13
+OSD2_GPSLONG_EN,0
+OSD2_GPSLONG_X,9
+OSD2_GPSLONG_Y,14
+OSD2_ROLL_EN,0
+OSD2_ROLL_X,0
+OSD2_ROLL_Y,0
+OSD2_PITCH_EN,0
+OSD2_PITCH_X,0
+OSD2_PITCH_Y,0
+OSD2_TEMP_EN,0
+OSD2_TEMP_X,0
+OSD2_TEMP_Y,0
+OSD2_HDOP_EN,0
+OSD2_HDOP_X,0
+OSD2_HDOP_Y,0
+OSD2_WAYPOINT_EN,0
+OSD2_WAYPOINT_X,0
+OSD2_WAYPOINT_Y,0
+OSD2_XTRACK_EN,0
+OSD2_XTRACK_X,0
+OSD2_XTRACK_Y,0
+OSD2_DIST_EN,0
+OSD2_DIST_X,22
+OSD2_DIST_Y,11
+OSD2_STATS_EN,0
+OSD2_STATS_X,0
+OSD2_STATS_Y,0
+OSD2_FLTIME_EN,0
+OSD2_FLTIME_X,23
+OSD2_FLTIME_Y,10
+OSD2_CLIMBEFF_EN,0
+OSD2_CLIMBEFF_X,0
+OSD2_CLIMBEFF_Y,0
+OSD2_EFF_EN,0
+OSD2_EFF_X,22
+OSD2_EFF_Y,10
+OSD2_BTEMP_EN,0
+OSD2_BTEMP_X,8
+OSD2_BTEMP_Y,10
+OSD2_ATEMP_EN,0
+OSD2_ATEMP_X,10
+OSD2_ATEMP_Y,5
+OSD2_BAT2_VLT_EN,0
+OSD2_BAT2_VLT_X,0
+OSD2_BAT2_VLT_Y,0
+OSD2_BAT2USED_EN,0
+OSD2_BAT2USED_X,37
+OSD2_BAT2USED_Y,6
+OSD2_ASPD2_EN,0
+OSD2_ASPD2_X,0
+OSD2_ASPD2_Y,0
+OSD2_ASPD1_EN,0
+OSD2_ASPD1_X,0
+OSD2_ASPD1_Y,0
+OSD2_CLK_EN,0
+OSD2_CLK_X,0
+OSD2_CLK_Y,0
+OSD2_SIDEBARS_EN,0
+OSD2_SIDEBARS_X,4
+OSD2_SIDEBARS_Y,5
+OSD2_CRSSHAIR_EN,0
+OSD2_CRSSHAIR_X,0
+OSD2_CRSSHAIR_Y,0
+OSD2_HOMEDIST_EN,0
+OSD2_HOMEDIST_X,1
+OSD2_HOMEDIST_Y,1
+OSD2_HOMEDIR_EN,0
+OSD2_HOMEDIR_X,1
+OSD2_HOMEDIR_Y,1
+OSD2_POWER_EN,0
+OSD2_POWER_X,1
+OSD2_POWER_Y,1
+OSD2_CELLVOLT_EN,0
+OSD2_CELLVOLT_X,1
+OSD2_CELLVOLT_Y,1
+OSD2_BATTBAR_EN,0
+OSD2_BATTBAR_X,1
+OSD2_BATTBAR_Y,1
+OSD2_ARMING_EN,0
+OSD2_ARMING_X,1
+OSD2_ARMING_Y,1
+OSD2_CURRENT2_EN,0
+OSD2_CURRENT2_X,0
+OSD2_CURRENT2_Y,0
+OSD2_VTX_PWR_EN,0
+OSD2_VTX_PWR_X,0
+OSD2_VTX_PWR_Y,0
+OSD2_AVGCELLV_EN,0
+OSD2_AVGCELLV_X,24
+OSD2_AVGCELLV_Y,3
+OSD2_RESTVOLT_EN,0
+OSD2_RESTVOLT_X,24
+OSD2_RESTVOLT_Y,2
+OSD2_FENCE_EN,0
+OSD2_FENCE_X,14
+OSD2_FENCE_Y,9
+OSD2_RNGF_EN,0
+OSD2_RNGF_X,24
+OSD2_RNGF_Y,15
+OSD2_ACRVOLT_EN,0
+OSD2_ACRVOLT_X,24
+OSD2_ACRVOLT_Y,4
+OSD3_ENABLE,0
+OSD4_ENABLE,0
+OSD_SW_METHOD,0
+OSD_OPTIONS,1
+OSD_FONT,0
+OSD_V_OFFSET,16
+OSD_H_OFFSET,32
+OSD_W_RSSI,30
+OSD_W_NSAT,9
+OSD_W_BATVOLT,10
+OSD_UNITS,0
+OSD_MSG_TIME,10
+OSD_ARM_SCR,0
+OSD_DSARM_SCR,0
+OSD_FS_SCR,0
+OSD_BTN_DELAY,300
+OSD_W_AVGCELLV,3.6
+OSD_CELL_COUNT,-1
+OSD_W_RESTVOLT,10
+OSD_W_ACRVOLT,3.6
+OSD5_ENABLE,0
+OSD6_ENABLE,0
+OSD1_LINK_Q_EN,1
+OSD1_LINK_Q_X,10
+OSD1_LINK_Q_Y,2
+OSD1_TXT_RES,1
+OSD1_FONT,0
+OSD2_LINK_Q_EN,0
+OSD2_LINK_Q_X,1
+OSD2_LINK_Q_Y,1
+OSD2_TXT_RES,0
+OSD2_FONT,0
+OSD3_LINK_Q_EN,0
+OSD3_LINK_Q_X,1
+OSD3_LINK_Q_Y,1
+OSD3_TXT_RES,1
+OSD3_FONT,0
+OSD4_LINK_Q_EN,0
+OSD4_LINK_Q_X,1
+OSD4_LINK_Q_Y,1
+OSD4_TXT_RES,0
+OSD4_FONT,0
 `;
- parseAndLoad(sampleText, 'sample_vtol_quadplane.param');
+ parseAndLoad(sampleText, 'sample_OSD.param');
 }
 
 
@@ -10644,10 +11018,8 @@ function renderOsdConfigWizard(area) {
 })();
 
 </script>
+
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js'));}</script></body>
+
 </body>
 </html>
-
-
-
-
-
