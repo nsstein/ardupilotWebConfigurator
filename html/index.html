@@ -16,7 +16,7 @@
 <link href="manifest.json" rel="manifest"/>
 <link href="icon-192.png" rel="icon"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ArduPilot Web Configurator v0.2.1</title>
+<title>ArduWebConf v0.3.0</title>
 <style>
   :root {
         --bg: #262c38;
@@ -1144,11 +1144,12 @@
   font-weight:600; border:1px solid var(--border);
   background:var(--bg3); color:var(--text2);
 }
-.ac-badge.beginner  { border-color:rgba(52,211,153,0.32);  background:rgba(52,211,153,0.08);  color:var(--green);  }
+.ac-badge.initial  { border-color:var(--purple);  background:rgba(52,211,153,0.08);  color:var(--purple);  }
+.ac-badge.beginner  { border-color:var(--purple);  background:rgba(52,211,153,0.08);  color:var(--purple);  }
 .ac-badge.intermediate { border-color:rgba(251,191,36,0.32); background:rgba(251,191,36,0.08); color:var(--amber); }
-.ac-badge.advanced  { border-color:rgba(167,139,250,0.32);  background:rgba(167,139,250,0.08); color:var(--purple); }
+.ac-badge.advanced  { border-color:rgba(167,139,250,0.32);  background:rgba(167,139,250,0.08); color:var(--amber); }
 .ac-badge.fc-req    { border-color:rgba(96,165,250,0.30);   background:rgba(96,165,250,0.07);  color:var(--accent2); }
-.ac-badge.offline-ok{ border-color:rgba(255,255,255,0.10);  color:var(--text3); }
+.ac-badge.offline-ok{ border-color:var(--purple);  color:var(--purple); }
 .ac-badge.time      { border-color:rgba(255,255,255,0.08);  color:var(--text3); }
 
 /* ── Agent group section header inside wizard grid ── */
@@ -2201,7 +2202,7 @@
 <div class="topbar" id="topbar">
   <div class="logo">
     <a href="javascript:safeReload();"><div class="logo-icon">✈</div></a>
-    ArduPilot Web Configurator v0.2.1
+    ArduWebConf v0.3.0
   </div>
   <div class="topbar-spacer"></div>
   <div id="statusPill" class="status-pill empty">
@@ -7081,32 +7082,32 @@ const AGENTS = [
   { id: 'accelcal',    icon: '⬡', group: 'First-Time Calibration',
     title: 'Accelerometer Cal',
     subtitle: 'Rotate the FC through 6 orientations to establish the inertial reference. Required before first flight.',
-    difficulty: 'beginner', fcRequired: true,  estimatedMin: 5,  pills: ['INS_*', 'AHRS'] },
+    difficulty: 'initial', fcRequired: true },
   { id: 'magcal',      icon: '◎', group: 'First-Time Calibration',
     title: 'Compass Calibration',
     subtitle: 'Rotate the aircraft in all axes to map the magnetic field. Required for heading-hold and GPS modes.',
-    difficulty: 'beginner', fcRequired: true,  estimatedMin: 5,  pills: ['COMPASS_*'] },
+    difficulty: 'initial', fcRequired: true },
   { id: 'levelhorizon',icon: '━', group: 'First-Time Calibration',
     title: 'Level Horizon',
     subtitle: 'Place the aircraft on a level surface and confirm attitude reference (AHRS_TRIM). Run after accel cal.',
-    difficulty: 'beginner', fcRequired: true,  estimatedMin: 2,  pills: ['AHRS_TRIM_*'] },
+    difficulty: 'initial', fcRequired: true },
   { id: 'rccal',       icon: '◈', group: 'First-Time Calibration',
     title: 'Radio Calibration',
     subtitle: 'Move all sticks and switches through full travel to capture RCx_MIN, RCx_TRIM, and RCx_MAX values.',
-    difficulty: 'beginner', fcRequired: true,  estimatedMin: 5,  pills: ['RCx_MIN', 'RCx_MAX', 'RCx_TRIM'] },
+    difficulty: 'initial', fcRequired: true },
   // ── Airframe & outputs ─────────────────────────────────────────────────────
   { id: 'airframe',    icon: '◫', group: 'Airframe & Outputs',
     title: 'Airframe & Servo Outputs',
     subtitle: 'Visually assign SERVOx_FUNCTION for Plane or Copter. Conflict detection highlights duplicate assignments.',
-    difficulty: 'intermediate', fcRequired: false, estimatedMin: 10, pills: ['SERVO*_FUNCTION'] },
+    difficulty: 'advanced', fcRequired: false },
   { id: 'vtol',        icon: '⬡', group: 'Airframe & Outputs',
     title: 'VTOL / QuadPlane Setup',
-    subtitle: 'Step-by-step wizard to enable Q_ENABLE, select frame type (Q_FRAME_CLASS/TYPE), configure tilt and PWM.',
-    difficulty: 'intermediate', fcRequired: false, estimatedMin: 20, pills: ['Q_ENABLE', 'Q_FRAME_CLASS', 'Q_TILT_*'] },
+    subtitle: 'Step-by-step wizard to enable Q_ENABLE,frame type (Q_FRAME_CLASS/TYPE)',
+    difficulty: 'advanced', fcRequired: false },
   { id: 'osdconfig',   icon: '▣', group: 'Airframe & Outputs',
     title: 'OSD Configuration',
     subtitle: 'Enable OSD_TYPE and set OSD screen layout. Then use OSD Displays to drag-and-drop element positions.',
-    difficulty: 'beginner', fcRequired: false, estimatedMin: 5,  pills: ['OSD_TYPE', 'OSD1_*'] },
+    difficulty: 'advanced', fcRequired: false },
 ];
 
 const VTOL_TYPES = [
@@ -7239,8 +7240,8 @@ function renderAgents(area){
       const cards = agents.map((a, idx) => {
         const diff = a.difficulty || 'beginner';
         const fcBadge = a.fcRequired
-          ? `<span class="ac-badge fc-req">FC Required</span>`
-          : `<span class="ac-badge offline-ok">Works Offline</span>`;
+          ? `<span class="ac-badge fc-req">Required</span>`
+          : `<span class="ac-badge offline-ok">FC Based</span>`;
         const diffBadge = `<span class="ac-badge ${diff}">${DIFF_LABEL[diff]||diff}</span>`;
         const timeBadge = a.estimatedMin ? `<span class="ac-badge time">~${a.estimatedMin} min</span>` : '';
         const paramLinks = {
@@ -9425,13 +9426,13 @@ function renderOverview(area) {
       <div class="ss-body">
         <div class="ss-title">${s.title}</div>
         <div class="ss-sub">${s.sub}</div>
-        ${s.done ? `<div style="font-size:10px;color:var(--green);margin-top:3px;">✓ Calibration data detected in parameters</div>`
+        ${s.done ? `<div style="font-size:10px;color:var(--purple);margin-top:3px;">✓ Data detected in parameters</div>`
                  : `<div class="ss-action">Open wizard →</div>`}
       </div>
       <div class="ss-badge">
         ${s.done
-          ? '<span class="ac-badge beginner">Done</span>'
-          : '<span class="ac-badge fc-req">Required</span>'}
+          ? '<span class="ac-badge beginner">Values Detected</span>'
+          : '<span class="ac-badge fc-req">Action Required</span>'}
       </div>
     </div>
   `).join('');
@@ -9479,7 +9480,7 @@ function renderOverview(area) {
           </div>
           <div class="ov-panel-tabs" style="min-width:280px;">
             <button class="ov-panel-tab ${window.__ovPanelTab === 'checklist' ? 'active' : ''}"
-              style="color:${doneCount === calChecklist.length ? 'var(--green)' : 'var(--amber)'}"
+              style="color:${doneCount === calChecklist.length ? 'var(--green)' : 'var(--purple)'}"
               onclick="window.__ovPanelTab='checklist';renderContent();">
               ✓ First-Time Setup Checklist
             </button>
